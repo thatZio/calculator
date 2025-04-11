@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拆迁补偿计算器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>拆迁补偿计算器</h1>
+
+        <!-- Input Section -->
+        <div id="input-section" class="card">
+            <h2>输入信息</h2>
+            <div class="form-group">
+                <label for="block-type">选择地块:</label>
+                <select id="block-type">
+                    <option value="A">欣泰花园、海锦公寓、柳河花园1-6号楼</option>
+                    <option value="B">其他住宅</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="residential-area">住宅产权面积 (㎡):</label>
+                <input type="number" id="residential-area" placeholder="例如: 149.71" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="storage-area">杂物间产权面积 (㎡):</label>
+                <input type="number" id="storage-area" placeholder="例如: 9.77" value="0" step="0.01"> <!-- Default to 0 -->
+            </div>
+            <button id="calculate-button">计算方案</button>
+            <p id="input-error" class="error-message"></p>
+        </div>
+
+        <!-- Scenario List Section (Initially Hidden) -->
+        <div id="scenario-list-section" class="card hidden">
+            <h2>可选方案列表</h2>
+            <ul id="scenario-list">
+                <!-- JS dynamically generates list items -->
+                <!-- <li><input type="checkbox" class="compare-checkbox" value="scenario_id"><label for="compare_scenario_id"><a href="#" data-scenario-id="scenario_1">Scenario One</a></label></li> -->
+            </ul>
+             <button id="compare-selected-button" class="hidden" disabled>比较选中方案</button>
+             <div id="compare-instructions">勾选 2 或 3 个方案进行比较</div>
+        </div>
+
+        <!-- Scenario Detail Section (Initially Hidden) -->
+        <div id="scenario-detail-section" class="card hidden">
+            <h2 id="scenario-title">方案详情</h2>
+            <div id="scenario-summary">
+                <!-- JS dynamically generates summary info -->
+                <!-- Example Structure: -->
+                <!-- <p><strong>确权面积:</strong> 154.60 ㎡</p> -->
+                <!-- <p><strong>公摊补偿面积:</strong> 10.00 ㎡</p> -->
+                <!-- <p><strong>等面积:</strong> 171.84 ㎡</p> -->
+                <!-- <p><strong>安置面积(上靠后):</strong> 180.00 ㎡</p> -->
+                <!-- <p><strong>上靠面积:</strong> 8.16 ㎡</p> -->
+                <!-- <hr> -->
+                <!-- <p><strong>选择房型:</strong> 135㎡ + 45㎡</p> -->
+                <!-- <p><strong>购房款:</strong> 3,359,520 元</p> -->
+                <!-- <p><strong>补偿款总计:</strong> 3,360,059 元</p> -->
+                <!-- <p><strong>应退差价款:</strong> <span style="color: red; font-weight: bold;">539 元</span> + 装修补偿、电梯评估款（按出资比例）、车库补偿（确权面积x10369/㎡）、管线补助等</p> -->
+            </div>
+
+            <div class="details-toggle">
+                <button id="toggle-details-button">显示详细构成</button>
+            </div>
+            <div id="scenario-breakdown" class="hidden">
+                <h3>补偿款详细构成:</h3>
+                <ul id="breakdown-list">
+                    <!-- JS dynamically generates breakdown -->
+                </ul>
+                <p><em>* 未含装修补偿、电梯评估款、车库补偿、管线补助等。</em></p>
+            </div>
+
+            <div class="actions">
+                 <button id="storage-advice-button">杂物间建议</button>
+                 <button id="back-to-list-button">返回方案列表</button>
+            </div>
+            <div id="storage-advice-content" class="hidden">
+                 <h3>杂物间影响分析:</h3>
+                 <p id="advice-text" style="white-space: pre-wrap;"></p> <!-- Allow line breaks -->
+            </div>
+        </div>
+
+        <!-- Comparison Section (Initially Hidden) -->
+        <div id="comparison-section" class="card hidden">
+             <h2>方案比较</h2>
+             <div id="comparison-table-container">
+                 <!-- JS dynamically generates comparison table -->
+             </div>
+             <button id="close-comparison-button">关闭比较</button>
+         </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
