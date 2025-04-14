@@ -40,12 +40,17 @@ label {
 }
 
 input[type="number"], select {
-    width: calc(100% - 22px); /* Account for border and padding */
+    /* width: calc(100% - 22px); */ /* Adjusted width in storage row */
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box; /* More accurate width calculation */
 }
+/* Ensure main residential area input takes full width */
+#residential-area {
+    width: calc(100% - 22px);
+}
+
 
 button {
     display: inline-block; /* Allow side-by-side */
@@ -58,6 +63,7 @@ button {
     font-size: 1em;
     margin-right: 10px; /* Add right margin */
     margin-top: 10px; /* Add top margin */
+    vertical-align: middle; /* Align buttons better with inputs */
 }
 
 button:hover {
@@ -67,6 +73,23 @@ button:hover {
 button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+}
+
+/* Specific button styles */
+#add-storage-button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.remove-storage-button {
+    background-color: #dc3545; /* Red color for remove */
+    padding: 5px 10px;
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+.remove-storage-button:hover {
+    background-color: #c82333;
 }
 
 
@@ -79,6 +102,38 @@ button:disabled {
     font-size: 0.9em;
     margin-top: 5px;
 }
+
+/* Storage Input Styling */
+.storage-input-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px; /* Spacing between elements */
+}
+.storage-input-row input[type="number"] {
+    flex: 1; /* Allow area input to grow */
+    min-width: 80px; /* Ensure minimum width */
+}
+.storage-input-row select {
+    flex: 1; /* Allow select to grow */
+    min-width: 120px; /* Ensure minimum width */
+}
+
+
+/* Radio Button Styling */
+.radio-group label {
+     display: inline-block; /* Place labels next to radios */
+     margin-right: 15px; /* Spacing between radio options */
+     margin-left: 3px;
+     font-weight: normal; /* Normal weight for radio labels */
+     cursor: pointer;
+}
+.radio-group input[type="radio"] {
+    margin-right: 5px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
 
 #scenario-list {
     list-style: none;
@@ -171,6 +226,12 @@ button:disabled {
     font-weight: bold;
     color: #000;
 }
+/* Style for deduction amount */
+#breakdown-list .deduction-value {
+    font-weight: bold;
+    color: #dc3545; /* Red color for deductions */
+}
+
 #breakdown-list .item-formula {
     font-size: 0.85em;
     color: #777;
@@ -248,6 +309,26 @@ button:disabled {
         width: auto; /* Mobile button width adapts */
         padding: 12px 18px; /* Increase tap area */
     }
+     #add-storage-button, .remove-storage-button {
+          padding: 8px 10px; /* Adjust padding for smaller buttons */
+          font-size: 0.9em;
+     }
+
+     .storage-input-row {
+          flex-wrap: wrap; /* Allow storage inputs to wrap */
+     }
+     .storage-input-row input[type="number"],
+     .storage-input-row select {
+          flex-basis: 45%; /* Roughly two items per line */
+          min-width: 100px;
+     }
+      .storage-input-row .remove-storage-button {
+          flex-basis: 100%; /* Button takes full width when wrapped */
+          text-align: center;
+          margin-left: 0;
+          margin-top: 5px;
+      }
+
      #breakdown-list .item-name {
         min-width: 140px; /* Reduce name width on mobile */
     }
