@@ -13,40 +13,31 @@
             <h1>房屋征收补偿方案测算</h1>
 
             <div class="input-section">
-                <h2>输入信息</h2>
-                <div class="form-group">
+                <!-- ... Input fields ... -->
+                 <div class="form-group">
                     <label for="residence-block-type">住宅地块:</label>
                     <select id="residence-block-type">
-                        <!-- Updated Text, Value remains A/B/C/D -->
                         <option value="A">欣泰3座</option>
                         <option value="B">河南29、32、35座</option>
                         <option value="C">河南33座</option>
                         <option value="D">河南34座</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label for="residential-area">住宅产权面积 (㎡):</label>
                     <input type="number" id="residential-area" placeholder="例如: 75.5" step="0.01" min="0.01" required>
                 </div>
-
                 <div class="form-group">
                     <label>杂物间信息:</label>
-                    <div id="storage-inputs-container">
-                        <!-- Storage inputs will be added here dynamically -->
-                    </div>
-                    <!-- Changed ID for specific styling -->
+                    <div id="storage-inputs-container"></div>
                     <button type="button" id="add-storage-button" class="secondary-button">+ 添加杂物间</button>
                 </div>
-
                 <div class="form-group">
                     <label for="decoration-fee">装修评估费 (元):</label>
                     <input type="number" id="decoration-fee" placeholder="选填, 输入金额" step="0.01" min="0">
                 </div>
-
                 <div class="form-group">
                     <label>是否公房:</label>
-                    <!-- Updated class for styling -->
                     <div class="radio-group horizontal">
                         <input type="radio" id="public-housing-no" name="public-housing" value="no" checked>
                         <label for="public-housing-no">否</label>
@@ -54,51 +45,52 @@
                         <label for="public-housing-yes">是</label>
                     </div>
                 </div>
-
-                <!-- Changed ID for specific styling -->
                 <button type="button" id="calculate-button" class="primary-button">计算方案</button>
                 <p id="input-error" class="error-message"></p>
             </div>
 
+            <!-- vvvvvvvvvvv MODIFIED SECTION vvvvvvvvvvv -->
             <div id="scenario-list-section" class="results-section hidden">
-                <h2>可选方案列表</h2>
+                <h2>可选方案列表（点击查看详情）</h2>
+                <!-- Instructions and button moved AFTER H2 and BEFORE UL -->
                 <p id="compare-instructions"></p>
+                <button type="button" id="compare-selected-button" class="primary-button hidden" disabled>比较选中方案</button>
+                <!-- Scenario list is now below the button -->
                 <ul id="scenario-list">
                     <!-- Scenarios will be listed here -->
                 </ul>
-                <button type="button" id="compare-selected-button" class="primary-button hidden" disabled>比较选中方案</button>
             </div>
+            <!-- ^^^^^^^^^^^ END MODIFIED SECTION ^^^^^^^^^^^ -->
+
 
             <div id="scenario-detail-section" class="results-section hidden">
-                <h2 id="scenario-title">方案详情</h2>
-                <div id="scenario-summary">
-                    <!-- Scenario summary will be shown here -->
-                </div>
-                 <!-- Generic button class -->
-                <button type="button" id="toggle-details-button" class="secondary-button">显示详细构成</button>
-                <div id="scenario-breakdown" class="hidden">
-                    <h3>详细构成 <span class="note">* 未含电梯评估款、管线补助等</span></h3>
-                    <ul id="breakdown-list">
-                        <!-- Breakdown items will be listed here -->
-                    </ul>
-                </div>
-                 <!-- Generic button class -->
-                <button type="button" id="storage-advice-button" class="secondary-button">杂物间建议</button>
-                <div id="storage-advice-content" class="hidden">
-                     <h3>杂物间影响分析</h3>
-                     <pre id="advice-text"></pre>
-                </div>
-                 <!-- Generic button class -->
-                <button type="button" id="back-to-list-button" class="tertiary-button">返回列表</button>
+                 <!-- ... Scenario details ... -->
+                  <h2 id="scenario-title">方案详情</h2>
+                  <div id="scenario-summary"></div>
+                  <button type="button" id="toggle-details-button" class="secondary-button">显示详细构成</button>
+                  <div id="scenario-breakdown" class="hidden">
+                      <h3>详细构成 <span class="note">* 未含电梯评估款、管线补助等</span></h3>
+                      <ul id="breakdown-list"></ul>
+                  </div>
+                  <button type="button" id="storage-advice-button" class="secondary-button">杂物间建议</button>
+                  <div id="storage-advice-content" class="hidden">
+                       <h3>杂物间影响分析</h3>
+                       <pre id="advice-text"></pre>
+                  </div>
+                  <button type="button" id="back-to-list-button" class="tertiary-button">返回列表</button>
             </div>
 
             <div id="comparison-section" class="results-section hidden">
-                 <h2>方案比较</h2>
-                 <div id="comparison-table-container">
-                     <!-- Comparison table will be inserted here -->
-                 </div>
-                  <!-- Generic button class -->
-                 <button type="button" id="close-comparison-button" class="tertiary-button">关闭比较</button>
+                 <!-- ... Comparison details ... -->
+                  <h2>方案比较</h2>
+                  <div id="comparison-table-container"></div>
+                  <p id="comparison-loss-summary" class="loss-summary hidden"></p>
+                  <div id="comparison-loss-details" class="hidden">
+                       <h3>损失详情</h3>
+                       <ul id="loss-details-list"></ul>
+                  </div>
+                  <button type="button" id="show-loss-details-button" class="secondary-button hidden">显示损失详情</button>
+                  <button type="button" id="close-comparison-button" class="tertiary-button">关闭比较</button>
              </div>
 
         </div> <!-- End container -->
