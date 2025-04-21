@@ -107,6 +107,11 @@
         </div> <!-- End container -->
     </div> <!-- End main-content -->
 
-    <script src="script.js"></script>
+    <script type="module">
+        import { HOUSING_PRICE, HOUSING_SIZES, MIN_HOUSING_EQUIVALENT_AREA, MAX_PUBLIC_AREA, MONETARY_REWARD_RATE, PUBLIC_AREA_DIFF_HOUSING, PUBLIC_AREA_DIFF_CASH, COMPLETE_APT_RATE, SETTLING_RATE, MOVING_RATE_BASE, TRANSITION_RATE, TRANSITION_MONTHS_HOUSING, TRANSITION_MONTHS_CASH, RENTAL_SUBSIDY, PUBLIC_HOUSING_FACTOR, MIN_MOVING_1, MIN_MOVING_2 } from './config.js';
+        import { BLOCK_RATES } from './blockRates.js';
+        import { BLOCK_OPTIONS, generateBlockSelectOptions } from './blockOptions.js';
+    </script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

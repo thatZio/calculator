@@ -1,3 +1,8 @@
+// 导入配置和常量
+import { HOUSING_PRICE, HOUSING_SIZES, MIN_HOUSING_EQUIVALENT_AREA, MAX_PUBLIC_AREA, MONETARY_REWARD_RATE, PUBLIC_AREA_DIFF_HOUSING, PUBLIC_AREA_DIFF_CASH, COMPLETE_APT_RATE, SETTLING_RATE, MOVING_RATE_BASE, TRANSITION_RATE, TRANSITION_MONTHS_HOUSING, TRANSITION_MONTHS_CASH, RENTAL_SUBSIDY, PUBLIC_HOUSING_FACTOR, MIN_MOVING_1, MIN_MOVING_2 } from './config.js';
+import { BLOCK_RATES } from './blockRates.js';
+import { BLOCK_OPTIONS, generateBlockSelectOptions } from './blockOptions.js';
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Password Protection ---
@@ -49,8 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeComparisonButton = document.getElementById('close-comparison-button');
 
         // --- Constants & Rates ---
-        const HOUSING_PRICE = 18664; const HOUSING_SIZES = [45, 60, 75, 90, 105, 120, 135, 150, 180]; const MIN_HOUSING_EQUIVALENT_AREA = 30; const MAX_PUBLIC_AREA = 10; const MONETARY_REWARD_RATE = 272; const PUBLIC_AREA_DIFF_HOUSING = 1900; const PUBLIC_AREA_DIFF_CASH = MONETARY_REWARD_RATE; const COMPLETE_APT_RATE = 420; const SETTLING_RATE = 50; const MOVING_RATE_BASE = 15; const TRANSITION_RATE = 15; const TRANSITION_MONTHS_HOUSING = 39; const TRANSITION_MONTHS_CASH = 6; const RENTAL_SUBSIDY = 20000; const PUBLIC_HOUSING_FACTOR = -0.2; const MIN_MOVING_1 = 1000; const MIN_MOVING_2 = 2000;
-        const BLOCK_RATES = { A: { locationRate: 15942, structureRate: 570, oldHouseRate: 2660 }, B: { locationRate: 14864, structureRate: 1150, oldHouseRate: 1500 }, C: { locationRate: 14864, structureRate: 1087.5, oldHouseRate: 1625 }, D: { locationRate: 14864, structureRate: 1022, oldHouseRate: 1755 }, };
+        // 移除重复的常量定义，使用导入的常量
 
         let currentScenarios = [];
         let currentInputs = {};
@@ -66,7 +70,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const roundUpToTier = (area) => { if (area < MIN_HOUSING_EQUIVALENT_AREA) return 0; const potentialTiers = HOUSING_SIZES.filter(tier => tier > 0).sort((a, b) => a - b); let previousTier = 0; if (area >= MIN_HOUSING_EQUIVALENT_AREA && area <= potentialTiers[0]) { return potentialTiers[0]; } for (const tier of potentialTiers) { if (area === tier) return tier; if (area > previousTier && area < tier) { if (Math.abs(area - previousTier) < 0.001) return previousTier; return tier; } if (area > tier) { previousTier = tier; continue; } if (area <= previousTier) { if (Math.abs(area - previousTier) < 0.001) return previousTier; return previousTier; } } if (area > Math.max(...potentialTiers)) return 180; return Math.max(...potentialTiers); };
 
         // --- Dynamic Input Handling ---
-        const createStorageInputRow = () => { const row = document.createElement('div'); row.className = 'storage-input-row'; const areaInput = document.createElement('input'); areaInput.type = 'number'; areaInput.className = 'storage-area'; areaInput.placeholder = '面积(㎡)'; areaInput.step = '0.01'; areaInput.min = '0'; const blockSelect = document.createElement('select'); blockSelect.className = 'storage-block-type'; blockSelect.innerHTML = `<option value="" disabled selected>选择地块 (默认同住宅)</option><option value="A">欣泰3座</option><option value="B">河南29、32、35座</option><option value="C">河南33座</option><option value="D">河南34座</option>`; const removeButton = document.createElement('button'); removeButton.type = 'button'; removeButton.className = 'remove-storage-button'; removeButton.textContent = '移除'; removeButton.addEventListener('click', () => { row.remove(); const remainingRows = storageInputsContainer.querySelectorAll('.storage-input-row'); if (remainingRows.length === 1) { const firstRemoveButton = remainingRows[0].querySelector('.remove-storage-button'); if (firstRemoveButton) firstRemoveButton.style.display = 'none'; } }); const existingRowCount = storageInputsContainer.querySelectorAll('.storage-input-row').length; if (existingRowCount > 0) { removeButton.style.display = 'inline-block'; const firstRow = storageInputsContainer.querySelector('.storage-input-row'); if(firstRow){ const firstRemoveBtn = firstRow.querySelector('.remove-storage-button'); if(firstRemoveBtn && firstRemoveBtn.style.display === 'none'){ firstRemoveBtn.style.display = 'inline-block'; } } } else { removeButton.style.display = 'none'; } row.appendChild(areaInput); row.appendChild(blockSelect); row.appendChild(removeButton); return row; };
+        const createStorageInputRow = () => { 
+            const row = document.createElement('div'); 
+            row.className = 'storage-input-row'; 
+            
+            const areaInput = document.createElement('input'); 
+            areaInput.type = 'number'; 
+            areaInput.className = 'storage-area'; 
+            areaInput.placeholder = '面积(㎡)'; 
+            areaInput.step = '0.01'; 
+            areaInput.min = '0'; 
+            
+            const blockSelect = document.createElement('select'); 
+            blockSelect.className = 'storage-block-type block-select';
+            blockSelect.innerHTML = generateBlockSelectOptions();
+            
+            const removeButton = document.createElement('button'); 
+            removeButton.type = 'button'; 
+            removeButton.className = 'remove-storage-button'; 
+            removeButton.textContent = '移除'; 
+            removeButton.addEventListener('click', () => { 
+                row.remove(); 
+                const remainingRows = storageInputsContainer.querySelectorAll('.storage-input-row'); 
+                if (remainingRows.length === 1) { 
+                    const firstRemoveButton = remainingRows[0].querySelector('.remove-storage-button'); 
+                    if (firstRemoveButton) firstRemoveButton.style.display = 'none'; 
+                } 
+            }); 
+            
+            const existingRowCount = storageInputsContainer.querySelectorAll('.storage-input-row').length; 
+            if (existingRowCount > 0) { 
+                removeButton.style.display = 'inline-block'; 
+                const firstRow = storageInputsContainer.querySelector('.storage-input-row'); 
+                if(firstRow){ 
+                    const firstRemoveBtn = firstRow.querySelector('.remove-storage-button'); 
+                    if(firstRemoveBtn && firstRemoveBtn.style.display === 'none'){ 
+                        firstRemoveBtn.style.display = 'inline-block'; 
+                    } 
+                } 
+            } else { 
+                removeButton.style.display = 'none'; 
+            } 
+            
+            row.appendChild(areaInput); 
+            row.appendChild(blockSelect); 
+            row.appendChild(removeButton); 
+            return row; 
+        };
         addStorageButton.addEventListener('click', () => { if (storageInputsContainer) { storageInputsContainer.appendChild(createStorageInputRow()); } else { console.error("Storage container not found"); } });
 
         // --- Core Calculation Logic ---
@@ -338,6 +388,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 overDeadlineLossDetails.classList.toggle('hidden');
                 overDeadlineShowLossDetailsButton.textContent = overDeadlineLossDetails.classList.contains('hidden') ? 
                     '显示损失详情' : '隐藏损失详情';
+            });
+        }
+
+        // 初始化地块选择下拉列表
+        function initializeBlockSelects() {
+            const blockSelects = document.querySelectorAll('.block-select');
+            blockSelects.forEach(select => {
+                select.innerHTML = generateBlockSelectOptions();
             });
         }
 
