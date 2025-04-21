@@ -164,6 +164,16 @@ button:disabled {
     background-color: #5a6268; /* Darker Gray */
 }
 
+/* 添加红色按钮样式 */
+.red-button {
+    background-color: #d9534f;
+    border-color: #d43f3a;
+}
+
+.red-button:hover {
+    background-color: #c9302c;
+    border-color: #ac2925;
+}
 
 /* Specific Overrides if needed (though class approach is better) */
 /* #add-storage-button { } */

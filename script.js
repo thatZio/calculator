@@ -32,6 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const storageAdviceButton = document.getElementById('storage-advice-button');
         const storageAdviceContent = document.getElementById('storage-advice-content');
         const adviceText = document.getElementById('advice-text');
+        const overDeadlineButton = document.getElementById('over-deadline-button');
+        const overDeadlineContent = document.getElementById('over-deadline-content');
+        const overDeadlineComparison = document.getElementById('over-deadline-comparison');
+        const overDeadlineLossSummary = document.getElementById('over-deadline-loss-summary');
+        const overDeadlineLossDetails = document.getElementById('over-deadline-loss-details');
+        const overDeadlineLossDetailsList = document.getElementById('over-deadline-loss-details-list');
+        const overDeadlineShowLossDetailsButton = document.getElementById('over-deadline-show-loss-details-button');
         const backToListButton = document.getElementById('back-to-list-button');
         const comparisonSection = document.getElementById('comparison-section');
         const comparisonTableContainer = document.getElementById('comparison-table-container');
@@ -42,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeComparisonButton = document.getElementById('close-comparison-button');
 
         // --- Constants & Rates ---
-        const HOUSING_PRICE = 18664; const HOUSING_SIZES = [45, 60, 75, 90, 105, 120, 135, 150]; const MIN_HOUSING_EQUIVALENT_AREA = 30; const MAX_PUBLIC_AREA = 10; const MONETARY_REWARD_RATE = 272; const PUBLIC_AREA_DIFF_HOUSING = 1900; const PUBLIC_AREA_DIFF_CASH = MONETARY_REWARD_RATE; const COMPLETE_APT_RATE = 420; const SETTLING_RATE = 50; const MOVING_RATE_BASE = 15; const TRANSITION_RATE = 15; const TRANSITION_MONTHS_HOUSING = 39; const TRANSITION_MONTHS_CASH = 6; const RENTAL_SUBSIDY = 20000; const PUBLIC_HOUSING_FACTOR = -0.2; const MIN_MOVING_1 = 1000; const MIN_MOVING_2 = 2000;
+        const HOUSING_PRICE = 18664; const HOUSING_SIZES = [45, 60, 75, 90, 105, 120, 135, 150, 180]; const MIN_HOUSING_EQUIVALENT_AREA = 30; const MAX_PUBLIC_AREA = 10; const MONETARY_REWARD_RATE = 272; const PUBLIC_AREA_DIFF_HOUSING = 1900; const PUBLIC_AREA_DIFF_CASH = MONETARY_REWARD_RATE; const COMPLETE_APT_RATE = 420; const SETTLING_RATE = 50; const MOVING_RATE_BASE = 15; const TRANSITION_RATE = 15; const TRANSITION_MONTHS_HOUSING = 39; const TRANSITION_MONTHS_CASH = 6; const RENTAL_SUBSIDY = 20000; const PUBLIC_HOUSING_FACTOR = -0.2; const MIN_MOVING_1 = 1000; const MIN_MOVING_2 = 2000;
         const BLOCK_RATES = { A: { locationRate: 15942, structureRate: 570, oldHouseRate: 2660 }, B: { locationRate: 14864, structureRate: 1150, oldHouseRate: 1500 }, C: { locationRate: 14864, structureRate: 1087.5, oldHouseRate: 1625 }, D: { locationRate: 14864, structureRate: 1022, oldHouseRate: 1755 }, };
 
         let currentScenarios = [];
@@ -79,7 +86,94 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Display Functions ---
         const displayScenariosList = (scenarios) => { scenarioListUl.innerHTML = ''; if (!scenarios || scenarios.length === 0) { scenarioListUl.innerHTML = '<li>未找到符合条件的方案。</li>'; compareSelectedButton.classList.add('hidden'); compareInstructions.textContent = ''; return; } const groupedScenarios = { maxHousing: [], oneHouseCash: [], twoHousesCash: [], pureCash: [] }; scenarios.forEach(s => { if (s.type === "Max Housing") groupedScenarios.maxHousing.push(s); else if (s.type === "1 House + Cash") groupedScenarios.oneHouseCash.push(s); else if (s.type === "2 Houses + Cash") groupedScenarios.twoHousesCash.push(s); else if (s.type === "Pure Monetary") groupedScenarios.pureCash.push(s); }); const addCategoryHeader = (title) => { const li = document.createElement('li'); li.style.fontWeight = 'bold'; li.style.marginTop = '15px'; li.style.borderBottom = 'none'; li.style.color = '#0056b3'; li.innerHTML = `    ${title}`; scenarioListUl.appendChild(li); }; const addScenarioToList = (scenario) => { const li = document.createElement('li'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = scenario.id; checkbox.id = `compare_${scenario.id}`; checkbox.classList.add('compare-checkbox'); checkbox.addEventListener('change', handleCompareCheckboxChange); const link = document.createElement('a'); link.href = '#'; link.textContent = scenario.name; link.dataset.scenarioId = scenario.id; link.addEventListener('click', (e) => { e.preventDefault(); displayScenarioDetail(scenario.id); }); const label = document.createElement('label'); label.htmlFor = `compare_${scenario.id}`; label.appendChild(link); label.style.flexGrow = '1'; label.style.cursor = 'pointer'; li.appendChild(checkbox); li.appendChild(label); scenarioListUl.appendChild(li); }; if (groupedScenarios.maxHousing.length > 0) { addCategoryHeader("尽可能拿房:"); groupedScenarios.maxHousing.forEach(addScenarioToList); } if (groupedScenarios.oneHouseCash.length > 0) { addCategoryHeader("拿一套房 + 货币:"); groupedScenarios.oneHouseCash.forEach(addScenarioToList); } if (groupedScenarios.twoHousesCash.length > 0) { addCategoryHeader("拿两套房 + 货币:"); groupedScenarios.twoHousesCash.forEach(addScenarioToList); } if (groupedScenarios.pureCash.length > 0) { addCategoryHeader("纯货币补偿:"); groupedScenarios.pureCash.forEach(addScenarioToList); } scenarioListSection.classList.remove('hidden'); scenarioDetailSection.classList.add('hidden'); comparisonSection.classList.add('hidden'); compareSelectedButton.classList.remove('hidden'); handleCompareCheckboxChange(); };
         const handleCompareCheckboxChange = () => { const checkedBoxes = scenarioListUl.querySelectorAll('.compare-checkbox:checked'); const count = checkedBoxes.length; compareSelectedButton.disabled = count < 1 || count > 3; if (count === 0) compareInstructions.textContent = '勾选 1 个方案比较签约期内外差异，或勾选 2-3 个方案进行横向比较。'; else if (count === 1) compareInstructions.textContent = '已选 1 个，可点击比较查看签约期内外差异。'; else if (count === 2) compareInstructions.textContent = '已选 2 个，可再选 1 个或直接比较。'; else if (count === 3) compareInstructions.textContent = '已选 3 个，请点击比较。'; else compareInstructions.textContent = '最多只能选择 3 个方案进行比较。'; };
-        const displayScenarioDetail = (scenarioId) => { const scenario = currentScenarios.find(s => s.id === scenarioId); if (!scenario) return; scenarioTitle.textContent = scenario.name; let summaryHtml = ''; let diffSuffix = ""; const hasDecorationFee = scenario.decorationFee && scenario.decorationFee > 0; if (hasDecorationFee) { diffSuffix = " <span class='diff-suffix'>+ 电梯评估款、管线补助等</span>"; } else { diffSuffix = " <span class='diff-suffix'>+ 装修补偿、电梯评估款、管线补助等</span>"; } summaryHtml += `<p><strong>确权面积:</strong> ${formatArea(scenario.confirmedArea)} ㎡</p>`; summaryHtml += `<p><strong>公摊补偿面积:</strong> ${formatArea(scenario.publicCompArea)} ㎡</p>`; if (scenario.type !== "Pure Monetary") { summaryHtml += `<p><strong>等面积:</strong> ${formatArea(scenario.equivalentArea)} ㎡</p>`; if (scenario.type === "Max Housing") { const resettlementAreaDisplay = scenario.resettlementArea || 0; const surplusArea = Math.max(0, round(resettlementAreaDisplay - scenario.equivalentArea, 2)); summaryHtml += `<p><strong>安置面积(上靠后):</strong> ${formatArea(resettlementAreaDisplay)} ㎡</p>`; summaryHtml += `<p><strong>上靠面积:</strong> ${formatArea(surplusArea)} ㎡</p>`; } } summaryHtml += `<hr>`; if (scenario.combo && scenario.combo.length > 0) { let housingSelectionText = scenario.combo.join('㎡ + ') + '㎡'; summaryHtml += `<p><strong>选择房型:</strong> ${housingSelectionText}</p>`; summaryHtml += `<p><strong>购房款:</strong> ${formatMoney(scenario.housingCost)} 元</p>`; } else if (scenario.type === "Max Housing") { summaryHtml += `<p><strong>选择房型:</strong> 按最高安置面积 ${formatArea(scenario.selectedArea)}㎡ 选房</p>`; summaryHtml += `<p><strong>购房款:</strong> ${formatMoney(scenario.housingCost)} 元</p>`; } else if (scenario.type === "Pure Monetary") { summaryHtml += `<p><strong>选择房型:</strong> 无</p>`; } summaryHtml += `<p><strong>补偿款总计:</strong> ${formatMoney(scenario.totalCompensation)} 元</p>`; if(scenario.isPublicHousing && scenario.publicHousingDeductionAmount !== 0) { summaryHtml += `<p style="font-size:0.9em; color: #555;"><strong>(含公房扣减:</strong> ${formatMoney(scenario.publicHousingDeductionAmount)} 元)</p>`; } if (hasDecorationFee) { summaryHtml += `<p style="font-size:0.9em; color: #555;"><strong>(含装修评估费:</strong> ${formatMoney(scenario.decorationFee)} 元)</p>`; } const diffValue = scenario.finalDifference; const diffColor = diffValue >= 0 ? 'red' : 'green'; if (diffValue >= 0) { summaryHtml += `<p><strong>应退差价款:</strong> <span style="color: ${diffColor}; font-weight: bold;">${formatMoney(diffValue)} 元</span>${diffSuffix}</p>`; } else { summaryHtml += `<p><strong>应补缴差价款:</strong> <span style="color: ${diffColor}; font-weight: bold;">${formatMoney(Math.abs(diffValue))} 元</span>${diffSuffix}</p>`; } scenarioSummary.innerHTML = summaryHtml; breakdownList.innerHTML = ''; if (scenario.breakdown && scenario.breakdown.length > 0) { scenario.breakdown.forEach(item => { const li = document.createElement('li'); const valueClass = item.isDeduction ? 'deduction-value' : 'item-value'; li.innerHTML = `<span class="item-name">${item.name}:</span> <span class="${valueClass}">${formatMoney(item.value)} 元</span>`; if (item.formula) { let formulaDisplay = item.formula.replace(/approx/g, '约').replace(/× NaN\/㎡/g,''); li.innerHTML += `<span class="item-formula">计算: ${formulaDisplay}</span>`; } breakdownList.appendChild(li); }); } else { breakdownList.innerHTML = '<li>详细构成信息不可用。</li>'; } scenarioBreakdown.classList.add('hidden'); toggleDetailsButton.textContent = '显示详细构成'; storageAdviceContent.classList.add('hidden'); scenarioListSection.classList.add('hidden'); scenarioDetailSection.classList.remove('hidden'); comparisonSection.classList.add('hidden'); storageAdviceButton.dataset.scenarioId = scenarioId; };
+        const displayScenarioDetail = (scenarioId) => { const scenario = currentScenarios.find(s => s.id === scenarioId); if (!scenario) return; scenarioTitle.textContent = scenario.name; 
+            
+            // 清理所有内容区域，确保隐藏历史内容
+            scenarioBreakdown.classList.add('hidden');
+            storageAdviceContent.classList.add('hidden');
+            overDeadlineContent.classList.add('hidden');
+            
+            toggleDetailsButton.textContent = '显示详细构成';
+            
+            let summaryHtml = '';
+            let diffSuffix = "";
+            const hasDecorationFee = scenario.decorationFee && scenario.decorationFee > 0;
+            if (hasDecorationFee) {
+                diffSuffix = " <span class='diff-suffix'>+ 电梯评估款、管线补助等</span>";
+            } else {
+                diffSuffix = " <span class='diff-suffix'>+ 装修补偿、电梯评估款、管线补助等</span>";
+            }
+
+            summaryHtml += `<p><strong>确权面积:</strong> ${formatArea(scenario.confirmedArea)} ㎡</p>`;
+            summaryHtml += `<p><strong>公摊补偿面积:</strong> ${formatArea(scenario.publicCompArea)} ㎡</p>`;
+
+            if (scenario.type !== "Pure Monetary") {
+                summaryHtml += `<p><strong>等面积:</strong> ${formatArea(scenario.equivalentArea)} ㎡</p>`;
+                if (scenario.type === "Max Housing") {
+                    const resettlementAreaDisplay = scenario.resettlementArea || 0;
+                    const surplusArea = Math.max(0, round(resettlementAreaDisplay - scenario.equivalentArea, 2));
+                    summaryHtml += `<p><strong>安置面积(上靠后):</strong> ${formatArea(resettlementAreaDisplay)} ㎡</p>`;
+                    summaryHtml += `<p><strong>上靠面积:</strong> ${formatArea(surplusArea)} ㎡</p>`;
+                }
+            }
+
+            summaryHtml += `<hr>`;
+
+            if (scenario.combo && scenario.combo.length > 0) {
+                let housingSelectionText = scenario.combo.join('㎡ + ') + '㎡';
+                summaryHtml += `<p><strong>选择房型:</strong> ${housingSelectionText}</p>`;
+                summaryHtml += `<p><strong>购房款:</strong> ${formatMoney(scenario.housingCost)} 元</p>`;
+            } else if (scenario.type === "Max Housing") {
+                summaryHtml += `<p><strong>选择房型:</strong> 按最高安置面积 ${formatArea(scenario.selectedArea)}㎡ 选房</p>`;
+                summaryHtml += `<p><strong>购房款:</strong> ${formatMoney(scenario.housingCost)} 元</p>`;
+            } else if (scenario.type === "Pure Monetary") {
+                summaryHtml += `<p><strong>选择房型:</strong> 无</p>`;
+            }
+
+            summaryHtml += `<p><strong>补偿款总计:</strong> ${formatMoney(scenario.totalCompensation)} 元</p>`;
+
+            if(scenario.isPublicHousing && scenario.publicHousingDeductionAmount !== 0) {
+                summaryHtml += `<p style="font-size:0.9em; color: #555;"><strong>(含公房扣减:</strong> ${formatMoney(scenario.publicHousingDeductionAmount)} 元)</p>`;
+            }
+            if (hasDecorationFee) {
+                summaryHtml += `<p style="font-size:0.9em; color: #555;"><strong>(含装修评估费:</strong> ${formatMoney(scenario.decorationFee)} 元)</p>`;
+            }
+
+            const diffValue = scenario.finalDifference;
+            const diffColor = diffValue >= 0 ? 'red' : 'green';
+            if (diffValue >= 0) {
+                summaryHtml += `<p><strong>应退差价款:</strong> <span style="color: ${diffColor}; font-weight: bold;">${formatMoney(diffValue)} 元</span>${diffSuffix}</p>`;
+            } else {
+                summaryHtml += `<p><strong>应补缴差价款:</strong> <span style="color: ${diffColor}; font-weight: bold;">${formatMoney(Math.abs(diffValue))} 元</span>${diffSuffix}</p>`;
+            }
+
+            scenarioSummary.innerHTML = summaryHtml;
+
+            // 更新breakdown列表
+            breakdownList.innerHTML = '';
+            if (scenario.breakdown && scenario.breakdown.length > 0) {
+                scenario.breakdown.forEach(item => {
+                    const li = document.createElement('li');
+                    const valueClass = item.isDeduction ? 'deduction-value' : 'item-value';
+                    li.innerHTML = `<span class="item-name">${item.name}:</span> <span class="${valueClass}">${formatMoney(item.value)} 元</span>`;
+                    if (item.formula) {
+                        let formulaDisplay = item.formula.replace(/approx/g, '约').replace(/× NaN\/㎡/g,'');
+                        li.innerHTML += `<span class="item-formula">计算: ${formulaDisplay}</span>`;
+                    }
+                    breakdownList.appendChild(li);
+                });
+            } else {
+                breakdownList.innerHTML = '<li>详细构成信息不可用。</li>';
+            }
+
+            scenarioListSection.classList.add('hidden');
+            scenarioDetailSection.classList.remove('hidden');
+            comparisonSection.classList.add('hidden');
+
+            // 存储方案ID给按钮
+            storageAdviceButton.dataset.scenarioId = scenarioId;
+            overDeadlineButton.dataset.scenarioId = scenarioId;
+        };
         const displayComparison = (selectedIds) => { comparisonLossSummary.classList.add('hidden'); comparisonLossDetails.classList.add('hidden'); showLossDetailsButton.classList.add('hidden'); currentLossDetails = []; if (selectedIds.length === 1) { const scenarioId = selectedIds[0]; const originalScenario = currentScenarios.find(s => s.id === scenarioId); if (!originalScenario) return; const lossScenarioResult = calculateLossScenario(originalScenario, currentInputs); displaySingleComparison(originalScenario, lossScenarioResult); } else if (selectedIds.length === 2 || selectedIds.length === 3) { const scenariosToCompare = currentScenarios.filter(s => selectedIds.includes(s.id)); if (scenariosToCompare.length < 2) return; displayMultiComparison(scenariosToCompare); } scenarioListSection.classList.add('hidden'); scenarioDetailSection.classList.add('hidden'); comparisonSection.classList.remove('hidden'); };
 
         // --- MODIFIED: Calculate Loss Scenario (Includes Settling Fee) ---
@@ -133,6 +227,118 @@ document.addEventListener('DOMContentLoaded', () => {
              storageInputsContainer.appendChild(createStorageInputRow());
         } else {
              console.error("Initial setup: Storage container not found");
+        }
+
+        // Add new function for displaying over deadline comparison
+        const displayOverDeadlineComparison = (scenarioId) => {
+            const originalScenario = currentScenarios.find(s => s.id === scenarioId);
+            if (!originalScenario) return;
+
+            const lossScenarioResult = calculateLossScenario(originalScenario, currentInputs);
+
+            let tableHtml = '<table><thead><tr><th>指标</th>';
+            tableHtml += `<th>签约期内</th>`;
+            tableHtml += `<th>超过签约期</th>`;
+            tableHtml += '</tr></thead><tbody>';
+
+            const metrics = [
+                { key: 'combo', label: '选择房型' },
+                { key: 'totalCompensation', label: '补偿款总计 (元)', formatter: formatMoney },
+                { key: 'finalDifference', label: '应交(-)/退(+)差价 (元)' },
+            ];
+
+            metrics.forEach(metric => {
+                tableHtml += `<tr><td><strong>${metric.label}</strong></td>`;
+                let originalValue = originalScenario[metric.key];
+                let lossValue = lossScenarioResult[metric.key];
+                let formattedOriginalValue = 'N/A';
+                let formattedLossValue = 'N/A';
+
+                if (metric.key === 'combo') {
+                    formattedOriginalValue = originalScenario.combo && originalScenario.combo.length > 0 ? 
+                        originalScenario.combo.join('㎡ + ') + '㎡' : '无';
+                    if (lossScenarioResult.type !== 'Pure Monetary' && !lossScenarioResult.canAffordHousing) {
+                        formattedLossValue = `<span style="color:red; font-style:italic;">补偿面积不足，无法选择此房型</span>`;
+                    } else {
+                        formattedLossValue = formattedOriginalValue;
+                    }
+                } else if (metric.key === 'totalCompensation') {
+                    formattedOriginalValue = formatMoney(originalValue);
+                    if (lossScenarioResult.type !== 'Pure Monetary' && !lossScenarioResult.canAffordHousing) {
+                        formattedLossValue = 'N/A';
+                    } else {
+                        formattedLossValue = formatMoney(lossValue);
+                    }
+                } else if (metric.key === 'finalDifference') {
+                    const diffValueOrig = originalScenario.finalDifference;
+                    const diffColorOrig = diffValueOrig >= 0 ? 'red' : 'green';
+                    formattedOriginalValue = `<span style="color:${diffColorOrig}; font-weight: bold;">${formatMoney(diffValueOrig)}</span>`;
+                    if (lossScenarioResult.type !== 'Pure Monetary' && !lossScenarioResult.canAffordHousing) {
+                        formattedLossValue = 'N/A';
+                    } else {
+                        const diffValueLoss = lossScenarioResult.finalDifference;
+                        const diffColorLoss = diffValueLoss >= 0 ? 'red' : 'green';
+                        formattedLossValue = `<span style="color:${diffColorLoss}; font-weight: bold;">${formatMoney(diffValueLoss)}</span>`;
+                    }
+                }
+
+                tableHtml += `<td>${formattedOriginalValue}</td>`;
+                tableHtml += `<td>${formattedLossValue}</td>`;
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody></table>';
+            overDeadlineComparison.innerHTML = tableHtml;
+
+            if (lossScenarioResult.type === 'Pure Monetary' || lossScenarioResult.canAffordHousing) {
+                const totalLoss = originalScenario.totalCompensation - lossScenarioResult.totalCompensation;
+                overDeadlineLossSummary.innerHTML = `超过签约期配合征迁手续，总补偿款损失 <span style="color:red;">${formatMoney(totalLoss)}</span> 元。`;
+                overDeadlineLossSummary.classList.remove('hidden');
+                overDeadlineShowLossDetailsButton.classList.remove('hidden');
+
+                // Store loss details for the show/hide button
+                overDeadlineShowLossDetailsButton.dataset.lossDetails = JSON.stringify(lossScenarioResult.lostItems);
+            } else {
+                overDeadlineLossSummary.classList.add('hidden');
+                overDeadlineShowLossDetailsButton.classList.add('hidden');
+            }
+
+            overDeadlineLossDetails.classList.add('hidden');
+            overDeadlineContent.classList.remove('hidden');
+            
+            // Hide other content sections
+            scenarioBreakdown.classList.add('hidden');
+            storageAdviceContent.classList.add('hidden');
+            toggleDetailsButton.textContent = '显示详细构成';
+        };
+
+        // Add event listeners for the new buttons
+        if (overDeadlineButton) {
+            overDeadlineButton.addEventListener('click', (e) => {
+                const scenarioId = e.target.dataset.scenarioId;
+                displayOverDeadlineComparison(scenarioId);
+            });
+        }
+
+        if (overDeadlineShowLossDetailsButton) {
+            overDeadlineShowLossDetailsButton.addEventListener('click', () => {
+                overDeadlineLossDetailsList.innerHTML = '';
+                const lostItems = JSON.parse(overDeadlineShowLossDetailsButton.dataset.lossDetails || '[]');
+                
+                if (lostItems && lostItems.length > 0) {
+                    lostItems.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span class="item-name">${item.name}:</span> <span class="item-value">${formatMoney(item.value)} 元</span>`;
+                        overDeadlineLossDetailsList.appendChild(li);
+                    });
+                } else {
+                    overDeadlineLossDetailsList.innerHTML = '<li>无具体损失项信息。</li>';
+                }
+
+                overDeadlineLossDetails.classList.toggle('hidden');
+                overDeadlineShowLossDetailsButton.textContent = overDeadlineLossDetails.classList.contains('hidden') ? 
+                    '显示损失详情' : '隐藏损失详情';
+            });
         }
 
     } // End initializeApp function

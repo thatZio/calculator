@@ -73,9 +73,20 @@
                       <ul id="breakdown-list"></ul>
                   </div>
                   <button type="button" id="storage-advice-button" class="secondary-button">杂物间建议</button>
+                  <button type="button" id="over-deadline-button" class="secondary-button red-button">超过签约期</button>
                   <div id="storage-advice-content" class="hidden">
                        <h3>杂物间影响分析</h3>
                        <pre id="advice-text"></pre>
+                  </div>
+                  <div id="over-deadline-content" class="hidden">
+                       <h3>超过签约期损失分析</h3>
+                       <div id="over-deadline-comparison"></div>
+                       <p id="over-deadline-loss-summary" class="loss-summary hidden"></p>
+                       <div id="over-deadline-loss-details" class="hidden">
+                            <h3>损失详情</h3>
+                            <ul id="over-deadline-loss-details-list"></ul>
+                       </div>
+                       <button type="button" id="over-deadline-show-loss-details-button" class="secondary-button hidden">显示损失详情</button>
                   </div>
                   <button type="button" id="back-to-list-button" class="tertiary-button">返回列表</button>
             </div>
