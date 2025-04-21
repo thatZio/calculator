@@ -32,6 +32,21 @@
                     <div id="storage-inputs-container"></div>
                     <button type="button" id="add-storage-button" class="secondary-button">+ 添加杂物间</button>
                 </div>
+
+                <!-- 新增安置方式选择 -->
+                <div class="form-group">
+                    <label for="relocation-type">安置方式:</label>
+                    <select id="relocation-type"></select>
+                </div>
+
+                <!-- 异地安置选项，初始隐藏 -->
+                <div id="remote-options" class="hidden">
+                    <div class="form-group">
+                        <label for="remote-area-type">区域类型:</label>
+                        <select id="remote-area-type"></select>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="decoration-fee">装修评估费 (元):</label>
                     <input type="number" id="decoration-fee" placeholder="选填, 输入金额" step="0.01" min="0">
@@ -107,11 +122,6 @@
         </div> <!-- End container -->
     </div> <!-- End main-content -->
 
-    <script type="module">
-        import { HOUSING_PRICE, HOUSING_SIZES, MIN_HOUSING_EQUIVALENT_AREA, MAX_PUBLIC_AREA, MONETARY_REWARD_RATE, PUBLIC_AREA_DIFF_HOUSING, PUBLIC_AREA_DIFF_CASH, COMPLETE_APT_RATE, SETTLING_RATE, MOVING_RATE_BASE, TRANSITION_RATE, TRANSITION_MONTHS_HOUSING, TRANSITION_MONTHS_CASH, RENTAL_SUBSIDY, PUBLIC_HOUSING_FACTOR, MIN_MOVING_1, MIN_MOVING_2 } from './config.js';
-        import { BLOCK_RATES } from './blockRates.js';
-        import { BLOCK_OPTIONS, generateBlockSelectOptions } from './blockOptions.js';
-    </script>
     <script type="module" src="script.js"></script>
 </body>
 </html>

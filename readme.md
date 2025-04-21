@@ -1,10 +1,6 @@
-好的，这是根据最终代码和所有功能更新的《拆迁补偿计算工具规则手册》V2.0。
-
----
-
 ## 拆迁补偿计算工具规则手册
 
-**版本:** 2.0 (基于 [当前日期] 的最终代码)
+**版本:** 2.1 (基于 [当前日期] 的最终代码)
 
 **目录**
 
@@ -19,28 +15,31 @@
         *   [可选方案列表](#可选方案列表)
         *   [方案详情](#方案详情)
         *   [详细构成](#详细构成)
-        *   [杂物间建议](#杂物间建议)
-        *   [方案比较 (新功能)](#方案比较-新功能)
-            *   [触发比较](#触发比较)
-            *   [单方案比较：签约期内外差异](#单方案比较签约期内外差异)
-            *   [多方案比较：横向对比](#多方案比较横向对比)
-            *   [关闭比较](#关闭比较)
+        *   [杂物间建议](#杂物间建议) (仅原拆原迁)
+        *   [超过签约期分析](#超过签约期分析)
+        *   [方案比较](#方案比较)
 3.  [计算规则与核心定义 (维护者参考)](#计算规则与核心定义-维护者参考)
     *   [I. 核心常量与费率定义](#i-核心常量与费率定义)
-    *   [II. 输入数据处理与基础面积计算](#ii-输入数据处理与基础面积计算)
-    *   [III. 核心补偿项计算规则](#iii-核心补偿项计算规则)
+    *   [II. 安置方式选项与数据](#ii-安置方式选项与数据) (新增)
+    *   [III. 输入数据处理与基础面积计算](#iii-输入数据处理与基础面积计算)
+    *   [IV. 核心补偿项计算规则](#iv-核心补偿项计算规则)
         *   [签约期内补偿项](#签约期内补偿项)
         *   [超过签约期损失项](#超过签约期损失项)
-    *   [IV. 关键衍生值计算](#iv-关键衍生值计算)
-    *   [V. 方案生成逻辑与条件](#v-方案生成逻辑与条件)
-    *   [VI. 房屋选择与组合规则](#vi-房屋选择与组合规则)
-    *   [VII. “X房+货币”方案拆分规则 (重要更新)](#vii-x房货币方案拆分规则-重要更新)
+    *   [V. 关键衍生值计算](#v-关键衍生值计算)
+    *   [VI. 方案生成逻辑](#vi-方案生成逻辑)
+        *   [原拆原迁](#原拆原迁)
+        *   [纯货币](#纯货币)
+        *   [异地安置](#异地安置)
+    *   [VII. 房屋选择与组合规则 (原拆原迁)](#vii-房屋选择与组合规则-原拆原迁)
+    *   [VIII. "X房+货币"方案拆分规则 (原拆原迁 - 重要更新)](#viii-x房货币方案拆分规则-原拆原迁---重要更新)
         *   [A地块: 价值比例拆分](#a地块-价值比例拆分)
         *   [B/C/D地块: 面积拆分](#bcd地块-面积拆分)
-    *   [VIII. 签约期内外比较计算 (`calculateLossScenario`)](#viii-签约期内外比较计算-calculatelossscenario)
-    *   [IX. 输出显示规则](#ix-输出显示规则)
-4.  [维护与更新建议](#维护与更新建议)
-5.  [术语解释](#术语解释)
+    *   [IX. 异地安置方案计算规则 (价值比例拆分)](#ix-异地安置方案计算规则-价值比例拆分)
+    *   [X. 超过签约期比较计算 (`calculateLossScenario`)](#x-超过签约期比较计算-calculatelossscenario)
+    *   [XI. 输出显示规则](#xi-输出显示规则)
+4.  [运行环境](#运行环境)
+5.  [维护与更新建议](#维护与更新建议)
+6.  [术语解释](#术语解释)
 
 ---
 
@@ -48,308 +47,168 @@
 
 #### 工具目的
 
-本工具旨在根据既定的拆迁补偿政策和计算规则，通过输入产权人的住宅及杂物间信息（包括装修评估费），快速、准确地计算出在不同补偿方案（纯货币、尽可能拿房、X房+货币）下的各项补偿金额、可选安置房面积、最终应补缴或应退还的差价款。新增功能允许比较单一方案在签约期内外的补偿差异，以及多方案的横向对比，从而提高拆迁补偿工作的效率和透明度。
+本工具旨在根据既定的拆迁补偿政策和计算规则，通过输入产权人的住宅及杂物间信息（包括装修评估费），快速、准确地计算出在不同 **安置方式**（原拆原迁、纯货币、异地安置）下的可选补偿方案、各项补偿金额、可选安置房面积、最终应补缴或应退还的差价款。工具还提供签约期内外补偿差异分析、多方案横向对比、以及原拆原迁模式下的杂物间购买建议，提高拆迁补偿工作的效率和透明度。
 
 #### 目标用户
 
 *   **主要用户:** 拆迁办公室工作人员，用于为拆迁对象测算补偿方案及签约期影响。
-*   **维护人员:** 负责更新、修正工具计算逻辑和密码的技术人员。
+*   **维护人员:** 负责更新、修正工具计算逻辑、费率和密码的技术人员。
 
 ### 用户使用指南
 
 #### 访问与验证
 
-*   打开工具页面时，会首先弹出一个提示框，要求输入访问口令。
-*   输入正确的口令（当前为 `antai`）后，计算器界面才会显示并可用。
-*   若口令错误或取消输入，将无法使用工具。需要刷新页面重试。
+*   **运行环境:** **由于使用了 ES6 模块 (`import`/`export`)，不能直接双击 `index.html` 打开。** 需要使用本地服务器运行。推荐方法：
+    *   在项目根目录打开终端，运行 `npx http-server -o`。服务器启动后会自动在浏览器打开。
+    *   或使用 VS Code / Cursor 的 `Live Server` 插件启动。
+*   **访问口令:** 打开工具页面时，会要求输入访问口令（当前为 `antai`）。正确输入后方可使用。
 
 #### 输入界面说明
 
-1.  **住宅地块:** 选择被拆迁住宅所属的地块。选项名称已更新，但对应计算值仍为 A/B/C/D。
-    *   `欣泰3座` (对应 A)
-    *   `河南29、32、35座` (对应 B)
-    *   `河南33座` (对应 C)
-    *   `河南34座` (对应 D)
-2.  **住宅产权面积 (㎡):** 输入产权证上登记的住宅面积（必须大于0）。
-3.  **杂物间信息:**
-    *   **初始状态:** 仅显示一组输入框（面积+地块选择）。
-    *   **面积 (㎡):** 输入该杂物间的产权面积（可为0或正数）。
-    *   **选择地块:** 选择杂物间地块（选项同上），**若不选，默认同住宅地块**。
-    *   **添加:** 点击 `+ 添加杂物间` 按钮（浅蓝色）增加一行输入。
-    *   **移除:** 当存在两行及以上杂物间输入时，每行末尾会出现红色的 `移除` 按钮。只剩一行时移除按钮自动隐藏。
-4.  **装修评估费 (元):** **（新增）** 输入评估确定的装修补偿金额（选填，若不填按0计算）。
-5.  **是否公房:** 选择“是”或“否”（默认为“否”）。按钮为左右排列。选择“是”会触发公房补偿款的扣减计算。
-6.  **字体大小:** 所有输入框、选择框的文字已调整，与标签文字大小一致，整体比旧版更大。
+1.  **住宅地块:** 选择被拆迁住宅所属的地块 (A/B/C/D 对应不同费率)。
+2.  **住宅产权面积 (㎡):** 必须大于 0。
+3.  **杂物间信息:** 可添加多个，不选地块则默认同住宅。
+4.  **安置方式:** **(新增)** 选择补偿方式，默认为"原拆原迁"。
+    *   `原拆原迁`: 按本地块对接价和规则计算住房方案。
+    *   `纯货币`: 仅计算并显示纯货币补偿方案详情。
+    *   `异地安置`: 选择后，需进一步选择"区域类型"。
+5.  **区域类型 (异地安置):** **(新增)** 当安置方式为"异地安置"时显示，选择异地房源的区域和性质 (如"鼓楼（现房）")。
+6.  **装修评估费 (元):** 选填，按 0 计算若不填。
+7.  **是否公房:** 默认为"否"。选择"是"会触发公房扣减计算。
 
 #### 计算与结果展示
 
 ##### 计算方案按钮
 
-点击深蓝色的 `计算方案` 按钮，开始计算所有补偿方案。
+点击 `计算方案` 按钮，根据所选安置方式生成结果。
 
 ##### 可选方案列表
 
-*   计算结果会按类别分组展示。
-*   **分组与排序:**
-    1.  尽可能拿房 (总面积降序)
-    2.  拿一套房 + 货币 (房型面积降序)
-    3.  拿两套房 + 货币 (两套房总面积降序)
-    4.  纯货币补偿
-*   **字体大小:** 列表中的方案名称文字已增大。
-*   **交互:**
-    *   点击方案名称链接，查看方案详情。
-    *   勾选方案前的复选框，用于后续比较。
+*   **原拆原迁:** 按类别分组展示（尽可能拿房、1房+货币、2房+货币）。
+*   **异地安置:** 按 **楼盘名称** 分组展示所有 **可负担** 的房型方案（显示为 `XX㎡ + 货币` 或 `XX㎡`）。
+*   **纯货币:** 不显示列表，直接跳转到纯货币方案详情页。
+*   **交互:** 点击方案名称链接查看详情，勾选复选框用于比较。
 
 ##### 方案详情
 
-点击具体方案后，展示该方案的核心数据：
-
-*   **确权面积**, **公摊补偿面积**
-*   **等面积** (纯货币方案不显示)
-*   **安置面积 (上靠后)**, **上靠面积** (仅“尽可能拿房”方案显示)
-*   **选择房型**
-*   **购房款**
-*   **补偿款总计**: (包含公房扣减、**装修评估费**，如有)
-*   **应退/补缴差价款**: 补偿款总计与购房款的差额。正数为应退，负数绝对值为应补缴。末尾附带提示未含项。**提示文字已根据是否有装修费输入动态调整** (有装修费则不提示“+装修补偿”)。
+展示方案核心数据：确权面积、公摊面积、选择房型（异地安置显示楼盘名+面积）、购房款（异地安置显示对接价）、补偿款总计、应退/补缴差价等。
 
 ##### 详细构成
 
-*   点击“显示详细构成”按钮（浅蓝色）可展开/隐藏补偿款总计的具体计算明细。
-*   列出主要补偿项名称、计算结果、计算公式或依据。
-*   **新增:** 如果输入了装修评估费，会在此处单独列出。
+点击"显示详细构成"按钮展开/隐藏补偿款计算明细。
 
-##### 杂物间建议
+##### 杂物间建议 (仅原拆原迁)
 
-*   点击“杂物间建议”按钮（浅蓝色）查看分析。
-*   **计算精度提升:** “上靠一档需要增加多少面积”的估算已改为**精确模拟计算**，结果更准确。
-*   内容包括当前杂物间的影响、对比无杂物间的情况、以及达到下一档位所需的精确杂物间面积（基于添加B地块杂物间模拟）。
+*   点击"杂物间建议"按钮（**仅在原拆原迁方案详情页显示**）查看分析。
+*   分析当前杂物间对安置面积和差价的影响，并估算增加多少杂物间可上靠至下一档房型。
 
-##### 方案比较 (新功能)
+##### 超过签约期分析
 
-*   **触发比较:**
-    *   在方案列表勾选 **1 个**、**2 个** 或 **3 个** 方案后，点击“比较选中方案”按钮（位于方案列表上方）。
-    *   说明文字会根据勾选数量动态变化。
-*   **比较界面:**
-    *   显示一个表格，对比所选方案的关键指标。
-    *   **移除列:** “购房款”列已从比较表格中移除。
-*   **单方案比较：签约期内外差异**
-    *   **触发:** 只勾选 1 个方案并点击比较。
-    *   **表格内容:** 显示两列数据：
-        *   **签约期内:** 显示所选方案的原始数据。
-        *   **超过签约期:** 显示假设失去特定奖励和补贴后的计算结果（见规则 III）。
-    *   **指标:** 对比“选择房型”、“补偿款总计”、“应交/退差价”。
-    *   **特殊情况:** 如果超过签约期后，因补偿款减少导致原房型无法负担（`lossHousingEligibleComp < housingCost`），则“超过签约期”一列的“选择房型”会显示红色斜体的“补偿面积不足，无法选择此房型”，“应交/退差价”显示“N/A”。
-    *   **损失总额:** 如果房型仍可选，表格下方会显示一行红色背景的醒目文字，总结总补偿款损失金额（字体较大）。
-    *   **损失详情:**
-        *   当房型仍可选时，“关闭比较”按钮左侧会出现“显示损失详情”按钮（浅蓝色）。
-        *   点击此按钮可展开/隐藏一个列表，逐项显示因超过签约期而损失的具体补偿项及其金额（如结构补偿、公摊补偿、成套房补贴、租房补贴、搬迁奖励）。
-*   **多方案比较：横向对比**
-    *   **触发:** 勾选 2 个 或 3 个 方案并点击比较。
-    *   **表格内容:** 显示 3 或 4 列数据（指标+各方案）。
-    *   **指标:** 对比“选择房型”、“补偿款总计”、“应交/退差价”。
-    *   **无损失信息:** 不显示签约期损失总额和损失详情。
-*   **关闭比较:** 点击“关闭比较”按钮（灰色）返回方案列表。
+*   点击"超过签约期"按钮（**在所有方案详情页均显示**）进行比较。
+*   显示签约期内外的补偿款总计和差价对比。
+*   下方显示损失总额，并可通过"显示损失详情"按钮查看具体损失项。
+
+##### 方案比较
+
+*   在方案列表勾选 1-3 个方案后，点击"比较选中方案"按钮。
+*   **单方案:** 自动进行签约期内外比较 (同"超过签约期分析")。
+*   **2-3 方案:** 进行横向对比，比较选择房型、补偿款总计、应交/退差价。
+*   点击"关闭比较"返回列表。
 
 ### 计算规则与核心定义 (维护者参考)
 
-#### I. 核心常量与费率定义 (`script.js` 内)
+#### I. 核心常量与费率定义 (`config.js`, `blockRates.js`)
 
-*   `HOUSING_PRICE`: 18664 元/㎡
-*   `HOUSING_SIZES`: `[45, 60, 75, 90, 105, 120, 135, 150]`
-*   `MIN_HOUSING_EQUIVALENT_AREA`: 30 ㎡
-*   `MAX_PUBLIC_AREA`: 10 ㎡
-*   `MONETARY_REWARD_RATE`: 272 元/㎡
-*   `PUBLIC_AREA_DIFF_HOUSING`: 1900 元/㎡
-*   `PUBLIC_AREA_DIFF_CASH`: 272 元/㎡
-*   `COMPLETE_APT_RATE`: 420 元/㎡
-*   `SETTLING_RATE`: 50 元/㎡
-*   `MOVING_RATE_BASE`: 15 元/㎡/次
-*   `TRANSITION_RATE`: 15 元/㎡/月
-*   `TRANSITION_MONTHS_HOUSING`: 39 个月
-*   `TRANSITION_MONTHS_CASH`: 6 个月
-*   `RENTAL_SUBSIDY`: 20000 元
-*   `PUBLIC_HOUSING_FACTOR`: -0.2
-*   `MIN_MOVING_1`: 1000 元
-*   `MIN_MOVING_2`: 2000 元
-*   `BLOCK_RATES`:
-    *   `A`: { locationRate: 15942, structureRate: 570, oldHouseRate: 2660 }
-    *   `B`: { locationRate: 14864, structureRate: 1150, oldHouseRate: 1500 }
-    *   `C`: { locationRate: 14864, structureRate: 1087.5, oldHouseRate: 1625 }
-    *   `D`: { locationRate: 14864, structureRate: 1022, oldHouseRate: 1755 }
-*   **密码:** `correctPassword = "antai"` (位于 `script.js` 开头)
+*   **`config.js`:** 包含 `HOUSING_PRICE` (原拆原迁对接价 18664), `HOUSING_SIZES` (原拆原迁房型), 各种补贴率 (`MONETARY_REWARD_RATE`, `COMPLETE_APT_RATE`, etc.), 期限 (`TRANSITION_MONTHS_HOUSING/CASH`), 门槛值 (`MIN_MOVING_1/2`) 等。
+*   **`blockRates.js`:** 包含各地块 (A/B/C/D) 的 `locationRate`, `structureRate`, `oldHouseRate`。
+*   **密码:** `correctPassword = "antai"` (位于 `script.js` 开头)。
 
-#### II. 输入数据处理与基础面积计算
+#### II. 安置方式选项与数据 (`relocationOptions.js`) (新增)
 
-1.  **杂物间有效面积 (`effectiveArea`)**: `round(杂物间产权面积 * 0.5, 2)`。
-2.  **确权面积 (`confirmedAreaPrecise`, `confirmedArea`)**:
-    *   `confirmedAreaPrecise = 住宅产权面积 + SUM(所有杂物间的 effectiveArea)`。
-    *   `confirmedArea = round(confirmedAreaPrecise, 2)`。
-3.  **公摊补偿面积 (`publicCompArea`)**: `Math.min(round(confirmedAreaPrecise * 0.1, 2), MAX_PUBLIC_AREA)`。
-4.  **装修评估费 (`decorationFee`)**: 直接读取输入值，默认为 0。
+*   `RELOCATION_TYPES`: 定义"原拆原迁"、"纯货币"、"异地安置"选项。
+*   `REMOTE_AREA_TYPES`: 定义异地安置的区域类型选项。
+*   `REMOTE_PROPERTIES`: 核心数据结构，按区域类型组织，包含各楼盘的 `label` (名称), `price` (对接价), `sizes` (可用房型数组)。
 
-#### III. 核心补偿项计算规则
+#### III. 输入数据处理与基础面积计算 (`script.js`, `remoteCalculator.js`)
 
-##### 签约期内补偿项
+*   **确权面积 (`confirmedAreaPrecise`, `confirmedArea`)**: 住宅面积 + SUM(杂物间面积 * 50%)。
+*   **公摊补偿面积 (`publicCompArea`)**: `min(confirmedAreaPrecise * 0.1, MAX_PUBLIC_AREA)`。
 
-*(使用 `confirmedAreaPrecise` 计算面积相关项，`confirmedArea` 用于搬迁奖励分档和搬家费计算基数)*
+#### IV. 核心补偿项计算规则 (`script.js`, `remoteCalculator.js`)
 
-1.  **住宅/杂物间 区位补偿**: `对应面积 * 对应地块 locationRate`。
-2.  **住宅/杂物间 旧房补偿**: `对应面积 * 对应地块 oldHouseRate`。
-3.  **房屋结构等级优惠 (`totalStructureComp`)**: `SUM(对应面积 * 对应地块 structureRate)` (仅拿房方案或X+Cash的房部分)。
-4.  **货币奖励**: `confirmedAreaPrecise * MONETARY_REWARD_RATE` (纯货币方案或X+Cash的币部分，替代结构款)。
-5.  **公摊补偿 (拿房)**: `publicCompArea * (住宅地块 locationRate + PUBLIC_AREA_DIFF_HOUSING)`。
-6.  **公摊补偿 (货币)**: `publicCompArea * (住宅地块 locationRate + PUBLIC_AREA_DIFF_CASH)`。
-7.  **成套房补贴**: `confirmedAreaPrecise * COMPLETE_APT_RATE`。
-8.  **搬迁奖励 (`relocationRewardTiered`)**: 按 `confirmedArea` 分档 (≥90: 3万, ≥60: 2.5万, <60: 2万)。
-9.  **搬家费**:
-    *   1次 (货币): `max(confirmedArea * 15 * 1, 1000)`。
-    *   2次 (拿房): `max(confirmedArea * 15 * 2, 2000)`。
-    *   X房+货币: 见规则 VII。
-10. **过渡费**:
-    *   拿房: `confirmedAreaPrecise * 15 * 39`。
-    *   货币: `confirmedAreaPrecise * 15 * 6`。
-    *   X房+货币: 见规则 VII。
-11. **安家补贴**: `confirmedAreaPrecise * SETTLING_RATE`。
-12. **租房补贴**: 固定 `RENTAL_SUBSIDY` (20000 元)。
-13. **装修评估费**: 直接加入总补偿，金额为输入值 `decorationFee`。
-14. **公房扣减**: 若 `isPublicHousing` 为 "是", `round(confirmedAreaPrecise * 住宅地块 locationRate * -0.2, 0)`。
+*   各项补偿计算逻辑分散在对应计算函数中 (如 `calculatePureCash`, `calculateMaxHousing`, `calculateRemoteValueSplitScenario`)。
+*   **签约期内:** 按照政策计算各项基础补偿、奖励、补贴、搬家费、过渡费、公房扣减、装修费等。
+*   **超过签约期损失项:** 在 `calculateLossScenario` (`script.js`) 中定义。主要损失：结构/货币奖励、公摊补偿房屋差额、成套房补贴、安家补贴、搬迁奖励、租房补贴。
 
-##### 超过签约期损失项
+#### V. 关键衍生值计算
 
-在进行“单方案比较”时，从“签约期内”的总补偿中扣除以下项的值，得到“超过签约期”的总补偿：
+*   **可对接购买补偿款 (`housingEligibleComp`)**: 用于判断购房资格。
+    *   原拆原迁: 计算逻辑在 `calculateHousingEligibleCompAndStructure` (`script.js`)。
+    *   异地安置: 计算逻辑在 `calculateHousingEligibleCompAndStructure_Remote` (`remoteCalculator.js`)。
+*   **等面积 (`equivalentArea`)** (仅原拆原迁): 用于确定 `resettlementArea`。
+*   **安置面积 (`resettlementArea`)** (仅原拆原迁): 根据 `equivalentArea` 上靠 `HOUSING_SIZES` (`roundUpToTier` in `script.js`)。
 
-1.  **结构补偿/货币奖励**: 对应方案中计算出的 `房屋结构等级优惠` 或 `货币奖励` 的总额。
-2.  **公摊补偿**: 对应方案中计算出的 `公摊补偿(拿房)` 或 `公摊补偿(货币)` 的总额。
-3.  **成套房补贴**: 对应方案中计算出的 `成套房补贴` 的总额。
-4.  **租房补贴**: 固定 `RENTAL_SUBSIDY` (20000 元)。
-5.  **搬迁奖励**: 对应方案中计算出的 `搬迁奖励` 的总额。
+#### VI. 方案生成逻辑 (`script.js` -> `calculateButton` listener)
 
-#### IV. 关键衍生值计算
+*   **原拆原迁 (`calculateCompensation` in `script.js`):**
+    *   计算 HEC 和 Equivalent Area。
+    *   若 Eq Area < 30，不生成住房方案。
+    *   生成 Max Housing, 1 House + Cash, 2 Houses + Cash 方案 (需满足 HEC >= 房款)。
+    *   **不包含** 纯货币方案。
+*   **纯货币 (`calculatePureCash` in `script.js`):**
+    *   直接调用 `calculatePureCash` 计算并显示详情。
+*   **异地安置 (`calculateRemoteRelocationScenarios` in `remoteCalculator.js`):**
+    *   计算 HEC。
+    *   遍历所选区域类型下的所有楼盘及其所有可用房型。
+    *   对 **每一个** 可用房型，检查 HEC 是否 >= `房型面积 * 对接价` (允许1元容差)。
+    *   若可负担，则调用 `calculateRemoteValueSplitScenario` 生成该房型方案。
 
-1.  **可对接购买安置型商品房的补偿款 (`housingEligibleComp`)**:
-    *   计算见 `calculateHousingEligibleCompAndStructure` 函数。
-    *   总和包括：住宅/杂物间(区位+旧房+**结构**) + 公摊补偿(**拿房费率**) + 成套房补贴。**不含**搬家费、过渡费、搬迁奖励、租房补贴、**装修评估费**、公房扣减。
-2.  **等面积 (`equivalentArea`)**:
-    *   **A地块:** `round(housingEligibleComp / HOUSING_PRICE, 2)`。
-    *   **B/C/D地块:** `round(confirmedAreaPrecise + round(confirmedAreaPrecise * 0.1, 2), 2)`。
-3.  **安置面积 (`resettlementArea`)**: 根据 `equivalentArea` 上靠规则 (`roundUpToTier`) 计算得出。
+#### VII. 房屋选择与组合规则 (原拆原迁 - `script.js`)
 
-#### V. 方案生成逻辑与条件
+*   使用 `HOUSING_SIZES` = `[45, 60, 75, 90, 105, 120, 135, 150]`。
+*   `findHousingCombinations`: 查找能精确组合成 `resettlementArea` 的单套或两套房型。
 
-*   **入口:** `calculateCompensation` 函数。
-*   **最低拿房门槛:** `equivalentArea < 30㎡` 则仅生成纯货币方案。
-*   **方案类型:**
-    *   纯货币 (`calculatePureCash`)
-    *   尽可能拿房 (`calculateMaxHousing`): 需 `equivalentArea >= 30㎡`。
-    *   1房+货币 (`calculateOneHousePlusCash` -> `calculateXHousePlusCash`): 需 `equivalentArea >= 30㎡` 且 `housingEligibleComp` >= 房款。
-    *   2房+货币 (`calculateTwoHousesPlusCash` -> `calculateXHousePlusCash`): 需 `equivalentArea >= 30㎡` 且 `housingEligibleComp` >= 房款，且总面积不超过 `resettlementArea+1`，且不与 Max Housing 方案重复。
-*   **去重:** 使用 `signature` 和与 Max Housing 方案对比进行过滤。
+#### VIII. "X房+货币"方案拆分规则 (原拆原迁 - `script.js`)
 
-#### VI. 房屋选择与组合规则
+*   **A地块:** `calculateXHousePlusCash_ValueSplit` - 按 `房款 / housingEligibleComp` 比例拆分各项补偿。
+*   **B/C/D地块:** `calculateXHousePlusCash_AreaSplit` - 按 `目标房型面积 / 1.1` 计算房部分面积，剩余面积按货币计算。
 
-*   **基础:** `HOUSING_SIZES` = `[45, 60, 75, 90, 105, 120, 135, 150]`。
-*   **`findHousingCombinations` 函数 (已修正):**
-    *   查找能精确等于 `targetArea` (允许浮点误差) 的 1 套或 2 套组合。
-    *   **已修复:** 现在能正确找到 `45+45=90`, `60+60=120`, `75+75=150` 等组合。
+#### IX. 异地安置方案计算规则 (价值比例拆分 - `remoteCalculator.js`)
 
-#### VII. “X房+货币”方案拆分规则 (重要更新)
+*   `calculateRemoteValueSplitScenario`: **始终采用价值比例拆分**。
+*   比例 (`propHouse`) = `min(选择的房型面积 * 楼盘对接价 / housingEligibleComp, 1)`。
+*   根据 `propHouse` 和 `propCash = 1 - propHouse` 拆分各项补偿到房部分和币部分。
+*   最终方案名称简化为 `XX㎡ + 货币` 或 `XX㎡`。
 
-*(由 `calculateXHousePlusCash` 函数调用对应地块的拆分函数)*
+#### X. 超过签约期比较计算 (`calculateLossScenario` in `script.js`)
 
-##### A地块: 价值比例拆分 (`calculateXHousePlusCash_ValueSplit`)
+*   计算损失总额 `totalLossAmount` (见 IV)。
+*   计算损失后总补偿 `lossTotalCompensation = originalScenario.totalCompensation - totalLossAmount`。
+*   **检查负担能力:** 判断 `lossTotalCompensation` 是否仍 >= `originalScenario.housingCost` (允许 `tolerance` 容差)。
+*   若仍可负担，`lossFinalDifference = lossTotalCompensation - originalScenario.housingCost`。
+*   若不可负担，`canAffordHousing = false`, `housingCost = 0`, `lossFinalDifference = lossTotalCompensation`。
 
-*   **核心:** 按价值比例分配各项补偿。
-*   **比例计算:**
-    *   `houseValue = 所选房屋总面积 * HOUSING_PRICE`。
-    *   `propHouse = min(houseValue / housingEligibleComp, 1)`。
-    *   `propCash = max(0, 1 - propHouse)`。
-*   **补偿项分配:**
-    *   **可变补偿** (区位+旧房+结构, 公摊(房/币), 成套房, 搬家费(1/2次), 过渡费(6/39月), 安家): 基于**总面积**计算总额，然后按 `propHouse`/`propCash` 比例拆分到“房部分”和“币部分”。币部分用货币奖励替代结构款，公摊用货币费率，搬家1次，过渡6月。
-    *   **固定补偿** (搬迁奖励, 租房补贴): 全额计入**币部分**。
-    *   **装修评估费**: 全额计入总补偿（不参与比例拆分，通常视为币部分）。
-    *   **公房扣减**: 全额计入总补偿（通常视为从币部分扣减）。
+#### XI. 输出显示规则 (`script.js` -> display functions)
 
-##### B/C/D地块: 面积拆分 (`calculateXHousePlusCash_AreaSplit`)
+*   **列表 (`displayScenariosList`):** 按安置方式组织，异地安置再按楼盘分组。
+*   **详情 (`displayScenarioDetail`):** 显示核心数据，根据类型隐藏/显示"杂物间建议"按钮。
+*   **比较 (`displayComparison`, `displaySingleComparison`, `displayMultiComparison`):** 生成对比表格，处理签约期内外差异显示。
 
-*   **核心:** 先拆分面积，再基于拆分后面积分别计算补偿。
-*   **面积拆分:**
-    *   **房部分 (P1) 住宅面积 `resArea_P1`**: `min(round(所选房屋总面积 / 1.1, 2), 总住宅面积)`。
-    *   **房部分 (P1) 公摊面积 `publicCompArea_P1`**: `round(min(resArea_P1 * 0.1, MAX_PUBLIC_AREA), 2)`。
-    *   **币部分 (P2) 住宅面积 `resArea_P2`**: `总住宅面积 - resArea_P1`。
-    *   **币部分 (P2) 杂物间有效面积 `storageEffectiveArea_P2`**: **全部**杂物间有效面积之和。
-    *   **币部分 (P2) 公摊面积 `publicCompArea_P2`**: `总公摊面积 - publicCompArea_P1`。
-    *   **币部分 (P2) 总有效面积 `effectiveArea_P2`**: `resArea_P2 + storageEffectiveArea_P2` (用于计算币部分某些补偿)。
-*   **补偿项计算:**
-    *   **房部分 (P1)**: 基于 `resArea_P1` 和 `publicCompArea_P1` 计算区位+旧房、公摊(房费率)、结构款、成套房、搬家费(2次, `max(resArea_P1*15*2, 2000)`)、过渡费(39月)、安家补贴。
-    *   **币部分 (P2)**:
-        *   基于 `resArea_P2` 计算住宅区位+旧房。
-        *   基于 `storageEffectiveArea_P2` 计算**所有**杂物间的区位+旧房。
-        *   基于 `publicCompArea_P2` 计算公摊(币费率)。
-        *   基于 `effectiveArea_P2` 计算货币奖励、成套房、过渡费(6月)、安家补贴。
-        *   基于 `effectiveArea_P2` 计算搬家费(1次, `effectiveArea_P2*15*1`, **无最低1000标准**, 且若 P1 搬家费已达2000最低则P2搬家费可能为0 - *此规则基于案例推断*)。
-        *   固定项 (搬迁奖励, 租房补贴) 全额计入 P2。
-    *   **装修评估费**: 全额计入总补偿。
-    *   **公房扣减**: 全额从总补偿中扣减。
+### 运行环境
 
-#### VIII. 签约期内外比较计算 (`calculateLossScenario`)
-
-*   **目的:** 计算当仅勾选一个方案时，“超过签约期”的补偿结果。
-*   **方法:**
-    1.  获取原始方案 (“签约期内”) 的总补偿 `totalCompensation`。
-    2.  识别并累加原始方案中属于“损失项”（结构/货币奖励、公摊补偿、成套房补贴、租房补贴、搬迁奖励）的金额 `totalLossValue`。
-    3.  计算“超过签约期”的总补偿 `lossTotalCompensation = totalCompensation - totalLossValue`。
-    4.  **检查房产可负担性:** 重新计算一个不含结构、成套房、公摊(房费率)的“可对接款” `lossHousingEligibleComp`。如果 `lossHousingEligibleComp < 原始方案购房款`，则标记为 `canAffordHousing = false`。
-    5.  计算“超过签约期”的差价 `lossFinalDifference`：
-        *   如果 `canAffordHousing = true`，则 `lossFinalDifference = lossTotalCompensation - 原始方案购房款`。
-        *   如果 `canAffordHousing = false`，则 `lossFinalDifference = N/A` (或保持 `lossTotalCompensation`)。
-    6.  返回包含 `lossTotalCompensation`, `lossFinalDifference`, `canAffordHousing`, `lostItems` (损失项明细) 的结果对象。
-
-#### IX. 输出显示规则
-
-1.  **数值格式化:** 金额取整千分位，面积保留两位小数，费率保留四位小数。
-2.  **界面布局:**
-    *   密码验证通过后显示主界面。
-    *   公房选择按钮左右排列。
-    *   “比较说明”和“比较按钮”位于方案列表标题下方、列表上方。
-3.  **字体大小:** 输入框、选择框、方案列表项、比较表格等文字已增大。
-4.  **方案详情:**
-    *   应退/补缴差价后提示文字根据是否有装修费输入动态调整。
-    *   详细构成中单独列出装修评估费（如有）。
-5.  **方案比较:**
-    *   支持 1, 2, 3 个方案比较。
-    *   移除“购房款”列。
-    *   **单方案比较:**
-        *   表头为“签约期内”和“超过签约期”。
-        *   若无法负担房产，显示特殊提示。
-        *   下方显示损失总额（醒目）。
-        *   提供“显示/隐藏损失详情”按钮和列表。
-    *   **多方案比较:**
-        *   表头为指标和各方案名称。
-        *   不显示损失信息。
+*   需要 **Node.js** 环境 (用于 `npx`) 或支持运行本地服务器的工具 (如 Live Server)。
+*   在现代浏览器 (Chrome, Firefox, Safari, Edge) 中访问。
 
 ### 维护与更新建议
 
-*   **密码修改:** 直接修改 `script.js` 文件顶部的 `correctPassword` 变量的值。
-*   **费率/常量更新:** 修改 `script.js` 文件顶部的常量定义。
-*   **房型增减:** 修改 `HOUSING_SIZES` 数组。
-*   **计算公式调整:**
-    *   **核心补偿项:** 修改 `calculatePureCash`, `calculateMaxHousing`, `calculateXHousePlusCash_ValueSplit`, `calculateXHousePlusCash_AreaSplit` 中对应项的计算。
-    *   **拆分逻辑:** 修改 `calculateXHousePlusCash_ValueSplit` (A地块) 或 `calculateXHousePlusCash_AreaSplit` (B/C/D地块)。修改面积拆分逻辑尤其要谨慎。
-    *   **签约期损失项:** 修改 `calculateLossScenario` 函数中识别和扣减损失项的逻辑。
-*   **界面调整:** 修改 `index.html` (结构) 和 `style.css` (样式)。
-*   **测试:** 任何修改后，务必使用不同地块、不同方案类型（纯货币、Max Housing、X+Cash）、特殊边界条件（如刚好达到分档线、面积刚好等于房型、有无杂物间、有无装修费、是否公房）以及签约期内外比较功能进行全面测试。
+*   **费率/常量更新:** 主要修改 `config.js`, `blockRates.js`, `relocationOptions.js`。
+*   **计算逻辑:** 修改 `script.js` (原拆原迁/核心逻辑) 和 `remoteCalculator.js` (异地安置)。
+*   **密码:** 修改 `script.js` 文件开头的 `correctPassword` 变量。
+*   **新增地块/异地楼盘:** 更新 `blockRates.js` 或 `relocationOptions.js`。
+*   **建议:** 将共享的计算函数 (如 HEC 计算, 面积计算, 格式化函数) 提取到单独的 `utils.js` 文件中，以减少代码重复。
 
 ### 术语解释
 
-*   **确权面积 (`confirmedArea`)**: 用于补偿计算的总面积基数（住宅+杂物间有效面积）。
-*   **等面积 (`equivalentArea`)**: 用于确定可选安置房总面积上限的中间值，计算方法因地块而异。
-*   **安置面积 (`resettlementArea`)**: 根据等面积上靠规则确定的可选安置房最大总面积。
-*   **可对接购买安置型商品房的补偿款 (`housingEligibleComp`)**: 专门用于计算购房能力的补偿款额度。
-*   **签约期内**: 指按当前所有补偿规则计算的结果。
-*   **超过签约期**: 指假设失去特定奖励补贴（结构/货币奖励、公摊、成套房、租房、搬迁奖励）后的计算结果。
-*   **价值比例拆分 (A地块X+Cash)**: 按所选房屋价值占总可对接款的比例，分配各项总补偿到房/币两部分。
-*   **面积拆分 (B/C/D地块X+Cash)**: 先按规则拆分面积基数，再基于拆分后面积分别计算房/币两部分的补偿。
-*   **Breakdown**: 方案详情中的补偿构成明细。
-*   **损失详情**: 单方案比较时，列出的因超过签约期而损失的补偿项明细。
+*(原有术语解释基本适用)*
 
 ---
