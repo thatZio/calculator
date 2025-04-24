@@ -4,7 +4,8 @@ import { COMPLETE_APT_RATE, SETTLING_RATE, MOVING_RATE_BASE, TRANSITION_RATE,
          PUBLIC_HOUSING_FACTOR, MIN_MOVING_1, MIN_MOVING_2, 
          PUBLIC_AREA_DIFF_HOUSING, PUBLIC_AREA_DIFF_CASH, MONETARY_REWARD_RATE, MAX_PUBLIC_AREA } from './config.js';
 import { BLOCK_RATES } from './blockRates.js';
-import { REMOTE_PROPERTIES } from './relocationOptions.js';
+import { REMOTE_PROPERTIES, getAvailableSizes } from './relocationOptions.js';
+import { roundUpToTier } from './script.js';
 
 // 工具函数
 const round = (value, decimals) => { 
@@ -129,32 +130,58 @@ export function calculateRemoteRelocationScenarios(inputs) {
 
     const properties = REMOTE_PROPERTIES[remoteAreaType];
     const scenarios = [];
-    const tolerance = 1; // Allow HEC to be slightly less than cost
+    const addedSignatures = new Set(); // To track added property/size combos
+    const tolerance = 1; // Allow HEC to be slightly less than cost for direct affordability
 
     properties.forEach(property => {
         if (!property.sizes || property.sizes.length === 0 || property.price <= 0) {
             return; // Skip property if no sizes or invalid price
         }
+        
+        // Calculate equivalent area and round-up tier for THIS property
+        let equivalentAreaForProperty = 0;
+        if (property.price > 0) {
+            equivalentAreaForProperty = round(housingEligibleComp / property.price, 2);
+        }
+        // Need roundUpToTier function available here
+        // Let's assume it's imported or defined locally
+        const roundedUpTier = roundUpToTier(equivalentAreaForProperty); 
+        
 
         // Iterate through ALL available sizes for this property
         property.sizes.forEach(size => {
-            const housingCost = round(size * property.price, 0);
+            const houseCost = round(size * property.price, 0);
+            const signature = `${property.value}_${size}`; // Unique identifier for property+size
+            let shouldAdd = false;
 
-            // Affordability Check for THIS size
-            if (housingEligibleComp >= housingCost - tolerance) {
-                // If affordable, calculate the scenario for this specific size
-                const scenario = calculateRemoteValueSplitScenario(
-                    baseInputs, 
-                    property, 
-                    size 
-                );
-                // Add scenario if calculation was successful
-                if (scenario) {
-                    // Avoid adding duplicates if somehow multiple checks pass for the same size (unlikely)
-                    if (!scenarios.some(s => s.propertyName === scenario.propertyName && s.selectedArea === scenario.selectedArea)) {
+            // Condition 1: Direct Affordability
+            if (housingEligibleComp >= houseCost - tolerance) {
+                shouldAdd = true;
+            }
+            
+            // Condition 2: Round-Up Tier Match (and not already affordable)
+            if (!shouldAdd && size === roundedUpTier) {
+                shouldAdd = true;
+            }
+
+            // Add scenario if conditions met and not already added
+            if (shouldAdd && !addedSignatures.has(signature)) {
+                 try {
+                    // Calculate the scenario using the value split logic (to be implemented next)
+                    const scenario = calculateRemoteValueSplitScenario(
+                        baseInputs, 
+                        property, 
+                        size 
+                    );
+                    if (scenario) {
                         scenarios.push(scenario);
+                        addedSignatures.add(signature);
+                    } else {
+                         console.warn(`Failed to calculate scenario for ${property.label} ${size}㎡`);
                     }
-                }
+                 } catch (e) {
+                     console.error(`Error calculating scenario for ${property.label} ${size}㎡:`, e);
+                 }
             }
         });
     });
@@ -168,40 +195,58 @@ export function calculateRemoteRelocationScenarios(inputs) {
     return scenarios;
 }
 
-// Calculate a SINGLE remote scenario using VALUE SPLIT
+// Calculate a SINGLE remote scenario using VALUE SPLIT (Reverted Logic)
 function calculateRemoteValueSplitScenario(baseInputs, property, size) {
     const { 
-        resArea, storageInputs, resBlock, isPublicHousing, decorationFee,
-        housingEligibleComp, totalStructureComp, publicCompArea, confirmedAreaPrecise, 
+        resArea, storageInputs, resBlock, isPublicHousing, decorationFee, remoteAreaType,
+        housingEligibleComp, // Needed for value split
+        // totalStructureComp, // Recalculate if needed based on split?
+        publicCompArea: originalPublicCompArea, // Keep original for reference
+        confirmedAreaPrecise, 
         confirmedArea, relocationRewardTiered, publicHousingDeductionAmount
     } = baseInputs;
     
     const resRates = getRates(resBlock);
     const propertyPrice = property.price;
-    const houseValue = round(size * propertyPrice, 0);
+    const selectedTotalArea = size;
+    const houseValue = round(selectedTotalArea * propertyPrice, 0);
 
-    // Determine Proportions
+    // --- Determine Value Split Proportions ---
     let propHouse = 0;
-    if (housingEligibleComp > 0) {
-        propHouse = Math.min(houseValue / housingEligibleComp, 1);
+    if (housingEligibleComp > 0.01) { // Avoid division by zero or near-zero
+        // Option 1: Strict cap at 1
+         propHouse = Math.min(1, houseValue / housingEligibleComp);
+        // Option 2: Allow slight overshoot (e.g., up to 1.0002 for rounding)
+        // propHouse = houseValue / housingEligibleComp;
+        // if (propHouse > 1.0002) propHouse = 1; // Cap significant overshoot
+        // if (propHouse > 1) propHouse = 1; // Or strict cap if preferred
+    } else {
+        // If HEC is zero/negative, cannot afford any housing part via value split
+        if (houseValue > 0) return null; // Cannot select house if no HEC
+        propHouse = 0; // Essentially pure cash, though this function might not be called
     }
-    // Handle floating point precision issues near 1
-    if (propHouse > 1 && propHouse < 1.00001) propHouse = 1;
-    const propCash = Math.max(0, 1 - propHouse);
+    const propCash = Math.max(0, 1 - propHouse); // Ensure propCash is not negative
 
+    // --- Initialize Breakdowns ---
     let breakdown_part1 = [], breakdown_part2 = [], totalPart1Value = 0, totalPart2Value = 0;
 
-    // Calculate base values needed for splitting (some might be pre-calculated in HEC but needed for breakdown)
+    // --- Recalculate Base Values Needed for Splitting ---
+    // (Similar to calculateXHousePlusCash_ValueSplit in script.js)
     const resLocOldValue_Total = resArea * (resRates.locationRate + resRates.oldHouseRate);
     let storLocOldValue_Total = 0;
+    let storStructureValue_Total = 0;
     storageInputs.forEach(stor => {
         const storRates = getRates(stor.block);
         const preciseEffectiveArea = stor.rawArea * 0.5;
         storLocOldValue_Total += preciseEffectiveArea * (storRates.locationRate + storRates.oldHouseRate);
+        storStructureValue_Total += preciseEffectiveArea * storRates.structureRate;
     });
-    const publicCompValue_H_Total = publicCompArea * (resRates.locationRate + PUBLIC_AREA_DIFF_HOUSING);
+    const publicCompValue_H_Total = originalPublicCompArea * (resRates.locationRate + PUBLIC_AREA_DIFF_HOUSING);
+    const publicCompValue_C_Total = originalPublicCompArea * (resRates.locationRate + PUBLIC_AREA_DIFF_CASH);
+    const resStructureValue_Total = resArea * resRates.structureRate;
+    const totalStructureComp_Calc = resStructureValue_Total + storStructureValue_Total;
     const completeAptValue_Total = confirmedAreaPrecise * COMPLETE_APT_RATE;
-    // totalStructureComp is already calculated
+    const settlingTotal = confirmedAreaPrecise * SETTLING_RATE;
 
     // --- Part 1: Housing Compensation Breakdown ---
     const p1_resLocOld = resLocOldValue_Total * propHouse;
@@ -216,7 +261,7 @@ function calculateRemoteValueSplitScenario(baseInputs, property, size) {
     breakdown_part1.push({ name: "公摊补偿(房部分)", value: p1_publicComp, formula: `房产价值比例 ${formatArea(propHouse*100)}%` });
     totalPart1Value += p1_publicComp;
 
-    const p1_structureComp = totalStructureComp * propHouse;
+    const p1_structureComp = totalStructureComp_Calc * propHouse;
     breakdown_part1.push({ name: "房屋结构等级优惠(房部分)", value: p1_structureComp, formula: `房产价值比例 ${formatArea(propHouse*100)}%` });
     totalPart1Value += p1_structureComp;
 
@@ -224,17 +269,57 @@ function calculateRemoteValueSplitScenario(baseInputs, property, size) {
     breakdown_part1.push({ name: "成套房补贴(房部分)", value: p1_completeAptComp, formula: `房产价值比例 ${formatArea(propHouse*100)}%` });
     totalPart1Value += p1_completeAptComp;
     
-    // Transition fee (housing part)
-    const transitionHousingTotal = confirmedAreaPrecise * TRANSITION_RATE * TRANSITION_MONTHS_HOUSING;
-    const p1_transition = transitionHousingTotal * propHouse;
-    breakdown_part1.push({ name: `过渡费+增发(房部分×${TRANSITION_MONTHS_HOUSING}月)`, value: p1_transition, formula: `房部分比例 ${formatArea(propHouse*100)}%` });
-    totalPart1Value += p1_transition;
+    // --- Conditional Fees (Moving & Transition) Based on remoteAreaType AND Value Split ---
+    const readyTypes = ["鼓楼（现房）", "鼓楼（一楼二楼现房）", "晋安仓山（现房）"];
+    const futureTypes = ["鼓楼（期房）", "晋安仓山（期房）"];
     
-    // Settling fee (housing part)
-    const settlingTotal = confirmedAreaPrecise * SETTLING_RATE;
+    let times = 1;
+    let transitionMonthsPart1 = TRANSITION_MONTHS_CASH; // Default to 6
+    if (futureTypes.includes(remoteAreaType)) {
+        times = 2;
+        transitionMonthsPart1 = TRANSITION_MONTHS_HOUSING; // 39
+    } else if (!readyTypes.includes(remoteAreaType)) {
+        console.warn(`Unknown remoteAreaType: ${remoteAreaType}, defaulting to 现房 logic for fees.`);
+    }
+
+    // Moving Fee Logic (Split based on value prop)
+    const totalMovingFeeRaw = confirmedArea * MOVING_RATE_BASE * times;
+    const minMovingFee = (times === 1) ? MIN_MOVING_1 : MIN_MOVING_2;
+    let movingFeeP1 = 0, movingFeeP2 = 0, movingFeeFormulaP1 = "", movingFeeFormulaP2 = "";
+
+    if (totalMovingFeeRaw < minMovingFee) {
+        movingFeeP1 = minMovingFee;
+        movingFeeP2 = 0;
+        movingFeeFormulaP1 = `补足最低 ${formatMoney(minMovingFee)} (原计算: ${formatMoney(round(totalMovingFeeRaw, 0))} < ${formatMoney(minMovingFee)})`;
+        movingFeeFormulaP2 = "已在房部分补足最低";
+    } else {
+        movingFeeP1 = totalMovingFeeRaw * propHouse;
+        movingFeeP2 = totalMovingFeeRaw * propCash;
+        movingFeeFormulaP1 = `总额 ${formatMoney(round(totalMovingFeeRaw,0))} × 房比例 ${formatArea(propHouse*100)}%`;
+        movingFeeFormulaP2 = `总额 ${formatMoney(round(totalMovingFeeRaw,0))} × 币比例 ${formatArea(propCash*100)}%`;
+    }
+    if (movingFeeP1 !== 0) breakdown_part1.push({ name: "搬家费(房部分)", value: movingFeeP1, formula: movingFeeFormulaP1 });
+    if (movingFeeP2 !== 0) breakdown_part2.push({ name: "搬家费(币部分)", value: movingFeeP2, formula: movingFeeFormulaP2 });
+    totalPart1Value += movingFeeP1;
+    totalPart2Value += movingFeeP2;
+
+    // Transition Fee Logic (Split based on value prop)
+    const transitionMonthsPart2 = TRANSITION_MONTHS_CASH; // Always 6 for cash part
+    const totalTransitionFeeP1 = confirmedAreaPrecise * TRANSITION_RATE * transitionMonthsPart1;
+    const totalTransitionFeeP2 = confirmedAreaPrecise * TRANSITION_RATE * transitionMonthsPart2;
+
+    const p1_transition = totalTransitionFeeP1 * propHouse;
+    breakdown_part1.push({ name: `过渡费(房部分×${transitionMonthsPart1}月)`, value: p1_transition, formula: `房部分比例 ${formatArea(propHouse*100)}%` });
+    totalPart1Value += p1_transition;
+
+    const p2_transition = totalTransitionFeeP2 * propCash;
+    breakdown_part2.push({ name: `过渡费(币部分×${transitionMonthsPart2}月)`, value: p2_transition, formula: `币部分比例 ${formatArea(propCash*100)}%` });
+    totalPart2Value += p2_transition;
+    
+    // Settling fee (Split based on value prop)
     const p1_settling = settlingTotal * propHouse;
-    breakdown_part1.push({ name: "安家补贴(房部分)", value: p1_settling, formula: `房部分比例 ${formatArea(propHouse*100)}%` });
-    totalPart1Value += p1_settling;
+     breakdown_part1.push({ name: "安家补贴(房部分)", value: p1_settling, formula: `房部分比例 ${formatArea(propHouse*100)}%` });
+     totalPart1Value += p1_settling;
 
     // --- Part 2: Cash Compensation Breakdown ---
     const p2_resLocOld = resLocOldValue_Total * propCash;
@@ -244,118 +329,87 @@ function calculateRemoteValueSplitScenario(baseInputs, property, size) {
     const p2_storLocOld = storLocOldValue_Total * propCash;
     breakdown_part2.push({ name: `杂物间区位+旧房(币部分 合计)`, value: p2_storLocOld, formula: `货币价值比例 ${formatArea(propCash*100)}%` });
     totalPart2Value += p2_storLocOld;
-
-    const publicCompValue_C_Total = publicCompArea * (resRates.locationRate + PUBLIC_AREA_DIFF_CASH);
+    
     const p2_publicComp = publicCompValue_C_Total * propCash;
     breakdown_part2.push({ name: "公摊补偿(币部分)", value: p2_publicComp, formula: `货币价值比例 ${formatArea(propCash*100)}%` });
     totalPart2Value += p2_publicComp;
 
-    // Monetary Reward (based on cash proportion area)
-    const confirmedAreaPrecise_cash_prop = confirmedAreaPrecise * propCash;
-    const p2_monetaryReward = confirmedAreaPrecise_cash_prop * MONETARY_REWARD_RATE;
-    breakdown_part2.push({ name: "货币奖励(币部分)", value: p2_monetaryReward, formula: `${formatArea(confirmedAreaPrecise_cash_prop)}㎡ × ${MONETARY_REWARD_RATE}/㎡` });
+    // Monetary Reward (Only for cash part area equivalent)
+    const effectiveArea_CashPortion = confirmedAreaPrecise * propCash; // Or base on resArea*propCash + storage*propCash?
+                                                                      // Let's stick to confirmedAreaPrecise * propCash for simplicity like Block A
+    const p2_monetaryReward = effectiveArea_CashPortion * MONETARY_REWARD_RATE;
+    breakdown_part2.push({ name: "货币奖励", value: p2_monetaryReward, formula: `${formatArea(effectiveArea_CashPortion)}㎡ × ${MONETARY_REWARD_RATE}/㎡` });
     totalPart2Value += p2_monetaryReward;
 
+    // Complete Apt Bonus (Cash part)
     const p2_completeAptComp = completeAptValue_Total * propCash;
     breakdown_part2.push({ name: "成套房补贴(币部分)", value: p2_completeAptComp, formula: `货币价值比例 ${formatArea(propCash*100)}%` });
     totalPart2Value += p2_completeAptComp;
 
-    // Transition fee (cash part)
-    const transitionCashTotal = confirmedAreaPrecise * TRANSITION_RATE * TRANSITION_MONTHS_CASH;
-    const p2_transition = transitionCashTotal * propCash;
-    breakdown_part2.push({ name: `过渡费(币部分×${TRANSITION_MONTHS_CASH}月)`, value: p2_transition, formula: `货币部分比例 ${formatArea(propCash*100)}%` });
-    totalPart2Value += p2_transition;
-    
-    // Settling fee (cash part)
+    // Settling Fee (Cash part)
     const p2_settling = settlingTotal * propCash;
-    breakdown_part2.push({ name: "安家补贴(币部分)", value: p2_settling, formula: `货币部分比例 ${formatArea(propCash*100)}%` });
+    breakdown_part2.push({ name: "安家补贴(币部分)", value: p2_settling, formula: `币部分比例 ${formatArea(propCash*100)}%` });
     totalPart2Value += p2_settling;
 
-    // --- Combined Fees & Deductions ---
-    
-    // Moving Fee (Value split logic like Block A original)
-    let finalFee_P1 = 0, finalFee_P2 = 0, formula_P1 = "", formula_P2 = "";
-    const areaBasisP1 = confirmedArea * propHouse;
-    const areaBasisP2 = confirmedArea * propCash;
-    const fee_P1_calc = areaBasisP1 * MOVING_RATE_BASE * 2; // Assume 2 moves for housing part
-    const fee_P2_calc = areaBasisP2 * MOVING_RATE_BASE * 1; // Assume 1 move for cash part
-    
-    if (fee_P1_calc + fee_P2_calc < MIN_MOVING_2) { // Use MIN_MOVING_2 as base if any housing involved
-        finalFee_P1 = MIN_MOVING_2;
-        finalFee_P2 = 0;
-        formula_P1 = `补足最低 ${formatMoney(MIN_MOVING_2)} (原计算: ${formatMoney(round(fee_P1_calc,0))} + ${formatMoney(round(fee_P2_calc,0))} < ${formatMoney(MIN_MOVING_2)})`;
-        formula_P2 = "已在房部分补足最低";
-    } else {
-        finalFee_P1 = fee_P1_calc;
-        finalFee_P2 = fee_P2_calc;
-        formula_P1 = `${formatArea(areaBasisP1)}㎡ × ${MOVING_RATE_BASE}/㎡ × 2`;
-        formula_P2 = `${formatArea(areaBasisP2)}㎡ × ${MOVING_RATE_BASE}/㎡ × 1`;
-    }
-    if (finalFee_P1 !== 0) breakdown_part1.push({ name: "搬家费(房部分)", value: finalFee_P1, formula: formula_P1 });
-    if (finalFee_P2 !== 0) breakdown_part2.push({ name: "搬家费(币部分)", value: finalFee_P2, formula: formula_P2 });
-    totalPart1Value += finalFee_P1;
-    totalPart2Value += finalFee_P2;
-
-    // Relocation Reward (Goes entirely to cash part)
+    // Relocation Reward (Full amount in cash part)
     breakdown_part2.push({ name: "搬迁奖励", value: relocationRewardTiered, formula: `按确权面积 ${formatArea(confirmedArea)}㎡ 档` });
     totalPart2Value += relocationRewardTiered;
 
-    // Rental Subsidy (Goes entirely to cash part)
+    // Rental Subsidy (Full amount in cash part)
     breakdown_part2.push({ name: "租房补贴", value: RENTAL_SUBSIDY, formula: `固定 ${formatMoney(RENTAL_SUBSIDY)}` });
     totalPart2Value += RENTAL_SUBSIDY;
 
-    // Combine breakdowns
+    // --- Combine Parts and Final Adjustments ---
     let fullBreakdown = [...breakdown_part1, ...breakdown_part2];
     let combinedValue = totalPart1Value + totalPart2Value;
 
-    // Decoration Fee (Add at the end, not split)
+    // Add Decoration Fee (if any)
     if (decorationFee > 0) {
         fullBreakdown.push({ name: "装修评估费", value: decorationFee, formula: "评估确定" });
-        combinedValue += decorationFee;
+        combinedValue += decorationFee; 
     }
 
-    // Public Housing Deduction (Apply at the end, not split)
+    // Apply Public Housing Deduction (Single deduction at the end)
     if (isPublicHousing && publicHousingDeductionAmount !== 0) {
+        // We need the original location rate here for the formula string
+        const originalResRates = getRates(resBlock); // Get rates again just for formula
         fullBreakdown.push({ 
             name: "公房扣减", 
             value: publicHousingDeductionAmount, 
-            formula: `${formatArea(confirmedAreaPrecise)}㎡ × ${formatRate(resRates.locationRate)}/㎡ × ${PUBLIC_HOUSING_FACTOR * 100}%`, 
+            formula: `${formatArea(confirmedAreaPrecise)}㎡ × ${formatRate(originalResRates.locationRate)}/㎡ × ${PUBLIC_HOUSING_FACTOR * 100}%`, 
             isDeduction: true 
         });
         combinedValue += publicHousingDeductionAmount; // Deduction is negative
     }
 
-    const totalCompensation = round(combinedValue, 0);
-    const finalDifference = totalCompensation - houseValue; // Difference between total compensation and house cost
+    const totalCompensation = round(combinedValue, 0); 
+    const finalDifference = totalCompensation - houseValue;
 
-    // Determine type based on whether there was a cash portion
+    // Determine scenario type (mostly for consistency, could be refined)
     const scenarioType = propCash > 0.0001 ? "Remote Housing + Cash" : "Remote Housing Exact"; 
 
-    // --- Name Generation --- 
-    const scenarioName = `${size}㎡${propCash > 0.0001 ? ' + 货币' : ''}`; // Simplified name
-
     return {
-        id: `remote_${property.value}_${size}_${propCash > 0.0001 ? 'cash' : 'exact'}_${Date.now()}`,
+        // Use property.value for a more stable ID component
+        id: `remote_${property.value}_${size}_${Date.now()}`,
         type: scenarioType,
-        name: scenarioName, // Use the simplified name
-        selectedArea: size,
-        combo: [size], // Represent selected housing
+        name: `${property.label} ${size}㎡${propCash > 0.0001 ? ' + 货币' : ''}`,
         propertyName: property.label,
-        propertyPrice: propertyPrice,
+        propertyPrice: property.price, 
+        selectedArea: size,
+        combo: [size],
         totalCompensation: totalCompensation,
         housingCost: houseValue,
         finalDifference: finalDifference,
         breakdown: fullBreakdown,
+        housingEligibleComp: housingEligibleComp, // Report original HEC for info
         confirmedArea: confirmedArea,
-        publicCompArea: publicCompArea, // Include for display consistency
+        publicCompArea: originalPublicCompArea,
         isPublicHousing: isPublicHousing,
         publicHousingDeductionAmount: publicHousingDeductionAmount,
         relocationReward: relocationRewardTiered,
+        totalStructureComp: baseInputs.totalStructureComp, // Report original total structure comp
         decorationFee: decorationFee,
-        remoteAreaType: baseInputs.remoteAreaType,
-        housingEligibleComp: housingEligibleComp, // Include for reference
-        totalStructureComp: totalStructureComp, // Include for reference
-        propHouse: propHouse, // Include for debugging/info
-        propCash: propCash    // Include for debugging/info
+        propHouse: propHouse, // Include for debugging/info if needed
+        propCash: propCash    // Include for debugging/info if needed
     };
 } 

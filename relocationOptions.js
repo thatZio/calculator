@@ -2,7 +2,7 @@
 export const RELOCATION_TYPES = [
     { value: "original", label: "原拆原迁" },
     { value: "monetary", label: "纯货币" },
-    { value: "remote", label: "异地安置" }
+    { value: "remote", label: "异地安置（功能测试中）" }
 ];
 
 // 异地安置区域类型

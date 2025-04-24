@@ -4,6 +4,40 @@ import { BLOCK_RATES } from './blockRates.js';
 import { BLOCK_OPTIONS, generateBlockSelectOptions } from './blockOptions.js';
 import { generateRelocationTypeOptions, generateRemoteAreaOptions, generatePropertyOptions, getAvailableSizes, getPropertyPrice } from './relocationOptions.js';
 
+// --- Exportable Helper Functions ---
+export const roundUpToTier = (area) => { 
+    // Use constants directly available in this scope if they were global/imported
+    // Assuming HOUSING_SIZES and MIN_HOUSING_EQUIVALENT_AREA are available 
+    // (Need to ensure they are imported or defined globally in script.js if not already)
+    // For now, let's redefine them here for robustness in case script.js structure changes
+    const LOCAL_HOUSING_SIZES = [45, 60, 75, 90, 105, 120, 135, 150, 180]; 
+    const LOCAL_MIN_HOUSING_EQUIVALENT_AREA = 30;
+
+    if (area < LOCAL_MIN_HOUSING_EQUIVALENT_AREA) return 0; 
+    const potentialTiers = LOCAL_HOUSING_SIZES.filter(tier => tier > 0).sort((a, b) => a - b); 
+    let previousTier = 0; 
+    if (area >= LOCAL_MIN_HOUSING_EQUIVALENT_AREA && area <= potentialTiers[0]) { 
+        return potentialTiers[0]; 
+    } 
+    for (const tier of potentialTiers) { 
+        if (area === tier) return tier; 
+        if (area > previousTier && area < tier) { 
+            if (Math.abs(area - previousTier) < 0.001) return previousTier; 
+            return tier; 
+        } 
+        if (area > tier) { 
+            previousTier = tier; 
+            continue; 
+        } 
+        if (area <= previousTier) { 
+            if (Math.abs(area - previousTier) < 0.001) return previousTier; 
+            return previousTier; 
+        } 
+    } 
+    if (area > Math.max(...potentialTiers)) return 180; // Assuming 180 is always max tier
+    return Math.max(...potentialTiers); 
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Password Protection ---
@@ -120,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const formatPreciseArea = (area) => { if (typeof area !== 'number' || isNaN(area)) return '0.00'; return area.toString(); };
         const formatRate = (rate) => { if (typeof rate !== 'number' || isNaN(rate)) return '0'; return Number(rate.toFixed(4)).toLocaleString('zh-CN'); };
         const getRates = (blockType) => BLOCK_RATES[blockType] || BLOCK_RATES['B'];
-        const roundUpToTier = (area) => { if (area < MIN_HOUSING_EQUIVALENT_AREA) return 0; const potentialTiers = HOUSING_SIZES.filter(tier => tier > 0).sort((a, b) => a - b); let previousTier = 0; if (area >= MIN_HOUSING_EQUIVALENT_AREA && area <= potentialTiers[0]) { return potentialTiers[0]; } for (const tier of potentialTiers) { if (area === tier) return tier; if (area > previousTier && area < tier) { if (Math.abs(area - previousTier) < 0.001) return previousTier; return tier; } if (area > tier) { previousTier = tier; continue; } if (area <= previousTier) { if (Math.abs(area - previousTier) < 0.001) return previousTier; return previousTier; } } if (area > Math.max(...potentialTiers)) return 180; return Math.max(...potentialTiers); };
 
         // --- Dynamic Input Handling ---
         const createStorageInputRow = () => { 
@@ -361,15 +394,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Display Original Relocation Scenarios
             if (groupedScenarios.maxHousing.length > 0) {
-                addCategoryHeader("原拆原迁 - 尽可能拿房:");
+                addCategoryHeader("尽可能上靠拿房:");
                 groupedScenarios.maxHousing.forEach(addScenarioToList);
             }
             if (groupedScenarios.oneHouseCash.length > 0) {
-                addCategoryHeader("原拆原迁 - 拿一套房 + 货币:");
+                addCategoryHeader("拿一套房 + 货币:");
                 groupedScenarios.oneHouseCash.forEach(addScenarioToList);
             }
             if (groupedScenarios.twoHousesCash.length > 0) {
-                addCategoryHeader("原拆原迁 - 拿两套房 + 货币:");
+                addCategoryHeader("拿两套房 + 货币:");
                 groupedScenarios.twoHousesCash.forEach(addScenarioToList);
             }
 
@@ -1026,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      const eqAreaWithoutStorage = calculateEquivalentAreaDirectly(inputsWithoutStorage);
                      const resAreaWithoutStorage = roundUpToTier(eqAreaWithoutStorage);
                      if (Math.abs(currentScenario.resettlementArea - resAreaWithoutStorage) < 0.01) { 
-                         adviceLines.push(`即使没有当前总计 ${formatArea(totalRawStorageArea)}㎡ 杂物间，您通常也可以安置到 ${formatArea(currentScenario.resettlementArea)}㎡。`); 
+                         adviceLines.push(`即使没有当前总计 ${formatArea(totalRawStorageArea)}㎡ 杂物间，您也可以安置到 ${formatArea(currentScenario.resettlementArea)}㎡。`); 
                          if (scenarioWithoutStorage) { 
                              adviceLines.push(`若无此杂物间，选择 ${scenarioWithoutStorage.name} 方案，差价约 ${formatMoney(Math.abs(diff))} 元 (${diff >= 0 ? '少退/多补' : '多退/少补'})。`); 
                          } else { 
@@ -1085,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          }
                      }
                      if (foundStorageNeeded > 0) { 
-                         adviceLines.push(`若要上靠一档至 ${nextTier}㎡ (对应等面积需 > ${formatArea(currentTierLowerBound)}㎡)，通过精确模拟计算，估算需要增加约 ${formatArea(foundStorageNeeded)}㎡ 杂物间面积 (按添加B地块杂物间计算)。`); 
+                         adviceLines.push(`若要上靠一档至 ${nextTier}㎡ (对应等面积需 > ${formatArea(currentTierLowerBound)}㎡)，通过模拟计算，需要增加约 ${formatArea(foundStorageNeeded)}㎡ 杂物间面积 (按河南新村35座杂物间价格)。`); 
                      } else { 
                          adviceLines.push(`未能通过模拟计算找到上靠至下一档 (${nextTier}㎡) 所需的杂物间面积 (可能需求过大或计算问题)。`); 
                      } 
