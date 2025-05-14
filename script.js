@@ -417,7 +417,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     subHeaderLi.style.marginLeft = '20px'; // Indent property name
                     subHeaderLi.style.borderBottom = 'none';
                     subHeaderLi.style.color = '#333';
-                    subHeaderLi.textContent = propertyName + ":";
+                    // Only display the property name, not with a colon, as the scenario name includes it.
+                    subHeaderLi.textContent = propertyName; 
                     scenarioListUl.appendChild(subHeaderLi);
 
                     // Sort scenarios within the property group (e.g., by size)
@@ -578,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Calculate the difference: Housing Value - Cash Value
             const publicCompCashValue = originalScenario.publicCompArea * (getRates(lossInputs.resBlock).locationRate + PUBLIC_AREA_DIFF_CASH);
             const publicCompHousingValue = originalScenario.publicCompArea * (getRates(lossInputs.resBlock).locationRate + PUBLIC_AREA_DIFF_HOUSING);
-            const effectivePublicCompLoss = round(publicCompHousingValue - publicCompCashValue, 0);
+            const effectivePublicCompLoss = round(publicCompHousingValue, 0); // 直接使用房屋价值作为差额
             if (effectivePublicCompLoss > 0) { lostItems.push({ name: "公摊补偿房屋差额", value: effectivePublicCompLoss }); totalLossAmount += effectivePublicCompLoss; }
             
             if (completeAptLoss !== 0) { lostItems.push({ name: "成套房补贴", value: completeAptLoss }); totalLossAmount += completeAptLoss; }

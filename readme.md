@@ -1,6 +1,6 @@
 ## 拆迁补偿计算工具规则手册
 
-**版本:** 2.1 (基于 [当前日期] 的最终代码)
+**版本:** 2.2 (基于当前代码)
 
 **目录**
 
@@ -20,22 +20,22 @@
         *   [方案比较](#方案比较)
 3.  [计算规则与核心定义 (维护者参考)](#计算规则与核心定义-维护者参考)
     *   [I. 核心常量与费率定义](#i-核心常量与费率定义)
-    *   [II. 安置方式选项与数据](#ii-安置方式选项与数据) (新增)
+    *   [II. 安置方式选项与数据](#ii-安置方式选项与数据)
     *   [III. 输入数据处理与基础面积计算](#iii-输入数据处理与基础面积计算)
     *   [IV. 核心补偿项计算规则](#iv-核心补偿项计算规则)
         *   [签约期内补偿项](#签约期内补偿项)
         *   [超过签约期损失项](#超过签约期损失项)
     *   [V. 关键衍生值计算](#v-关键衍生值计算)
-    *   [VI. 方案生成逻辑](#vi-方案生成逻辑)
+    *   [VI. 方案生成逻辑 (重要更新)](#vi-方案生成逻辑-重要更新)
         *   [原拆原迁](#原拆原迁)
         *   [纯货币](#纯货币)
         *   [异地安置](#异地安置)
     *   [VII. 房屋选择与组合规则 (原拆原迁)](#vii-房屋选择与组合规则-原拆原迁)
-    *   [VIII. "X房+货币"方案拆分规则 (原拆原迁 - 重要更新)](#viii-x房货币方案拆分规则-原拆原迁---重要更新)
+    *   [VIII. "X房+货币"方案拆分规则 (原拆原迁)](#viii-x房货币方案拆分规则-原拆原迁)
         *   [A地块: 价值比例拆分](#a地块-价值比例拆分)
         *   [B/C/D地块: 面积拆分](#bcd地块-面积拆分)
-    *   [IX. 异地安置方案计算规则 (价值比例拆分)](#ix-异地安置方案计算规则-价值比例拆分)
-    *   [X. 超过签约期比较计算 (`calculateLossScenario`)](#x-超过签约期比较计算-calculatelossscenario)
+    *   [IX. 异地安置方案计算规则 (价值比例拆分 - 重要更新)](#ix-异地安置方案计算规则-价值比例拆分---重要更新)
+    *   [X. 超过签约期比较计算](#x-超过签约期比较计算-calculatelossscenario)
     *   [XI. 输出显示规则](#xi-输出显示规则)
 4.  [运行环境](#运行环境)
 5.  [维护与更新建议](#维护与更新建议)
@@ -68,11 +68,11 @@
 1.  **住宅地块:** 选择被拆迁住宅所属的地块 (A/B/C/D 对应不同费率)。
 2.  **住宅产权面积 (㎡):** 必须大于 0。
 3.  **杂物间信息:** 可添加多个，不选地块则默认同住宅。
-4.  **安置方式:** **(新增)** 选择补偿方式，默认为"原拆原迁"。
+4.  **安置方式:** 选择补偿方式，默认为"原拆原迁"。
     *   `原拆原迁`: 按本地块对接价和规则计算住房方案。
     *   `纯货币`: 仅计算并显示纯货币补偿方案详情。
     *   `异地安置`: 选择后，需进一步选择"区域类型"。
-5.  **区域类型 (异地安置):** **(新增)** 当安置方式为"异地安置"时显示，选择异地房源的区域和性质 (如"鼓楼（现房）")。
+5.  **区域类型 (异地安置):** 当安置方式为"异地安置"时显示，选择异地房源的区域和性质 (如"鼓楼（现房）", "晋安仓山（期房）")。
 6.  **装修评估费 (元):** 选填，按 0 计算若不填。
 7.  **是否公房:** 默认为"否"。选择"是"会触发公房扣减计算。
 
@@ -84,8 +84,10 @@
 
 ##### 可选方案列表
 
-*   **原拆原迁:** 按类别分组展示（尽可能拿房、1房+货币、2房+货币）。
-*   **异地安置:** 按 **楼盘名称** 分组展示所有 **可负担** 的房型方案（显示为 `XX㎡ + 货币` 或 `XX㎡`）。
+*   **原拆原迁:** 按类别分组展示（尽可能上靠拿房、1房+货币、2房+货币）。
+*   **异地安置:** 按 **楼盘名称** 分组展示所有 **可负担** 的房型方案。可负担包括：
+    *   房款 <= 可对接补偿款 (`housingEligibleComp`)
+    *   或 该房型面积 == 根据 (可对接补偿款 / 楼盘对接价) 计算出的等面积上靠后的档位面积。
 *   **纯货币:** 不显示列表，直接跳转到纯货币方案详情页。
 *   **交互:** 点击方案名称链接查看详情，勾选复选框用于比较。
 
@@ -119,66 +121,72 @@
 
 #### I. 核心常量与费率定义 (`config.js`, `blockRates.js`)
 
-*   **`config.js`:** 包含 `HOUSING_PRICE` (原拆原迁对接价 18664), `HOUSING_SIZES` (原拆原迁房型), 各种补贴率 (`MONETARY_REWARD_RATE`, `COMPLETE_APT_RATE`, etc.), 期限 (`TRANSITION_MONTHS_HOUSING/CASH`), 门槛值 (`MIN_MOVING_1/2`) 等。
+*   **`config.js`:** 包含 `HOUSING_PRICE` (原拆原迁对接价 18664), `HOUSING_SIZES` (原拆原迁房型), 各种补贴率 (`MONETARY_REWARD_RATE`, `COMPLETE_APT_RATE`, etc.), 期限 (`TRANSITION_MONTHS_HOUSING`/`CASH`), 门槛值 (`MIN_MOVING_1`/`2`) 等。
 *   **`blockRates.js`:** 包含各地块 (A/B/C/D) 的 `locationRate`, `structureRate`, `oldHouseRate`。
 *   **密码:** `correctPassword = "antai"` (位于 `script.js` 开头)。
 
-#### II. 安置方式选项与数据 (`relocationOptions.js`) (新增)
+#### II. 安置方式选项与数据 (`relocationOptions.js`)
 
 *   `RELOCATION_TYPES`: 定义"原拆原迁"、"纯货币"、"异地安置"选项。
-*   `REMOTE_AREA_TYPES`: 定义异地安置的区域类型选项。
+*   `REMOTE_AREA_TYPES`: 定义异地安置的区域类型选项 (用于区分现房/期房)。
 *   `REMOTE_PROPERTIES`: 核心数据结构，按区域类型组织，包含各楼盘的 `label` (名称), `price` (对接价), `sizes` (可用房型数组)。
 
 #### III. 输入数据处理与基础面积计算 (`script.js`, `remoteCalculator.js`)
 
 *   **确权面积 (`confirmedAreaPrecise`, `confirmedArea`)**: 住宅面积 + SUM(杂物间面积 * 50%)。
-*   **公摊补偿面积 (`publicCompArea`)**: `min(confirmedAreaPrecise * 0.1, MAX_PUBLIC_AREA)`。
+*   **公摊补偿面积 (`publicCompArea`, `originalPublicCompArea`)**: `min(confirmedAreaPrecise * 0.1, MAX_PUBLIC_AREA)`。
 
 #### IV. 核心补偿项计算规则 (`script.js`, `remoteCalculator.js`)
 
-*   各项补偿计算逻辑分散在对应计算函数中 (如 `calculatePureCash`, `calculateMaxHousing`, `calculateRemoteValueSplitScenario`)。
+*   各项补偿计算逻辑分散在对应计算函数中。
 *   **签约期内:** 按照政策计算各项基础补偿、奖励、补贴、搬家费、过渡费、公房扣减、装修费等。
 *   **超过签约期损失项:** 在 `calculateLossScenario` (`script.js`) 中定义。主要损失：结构/货币奖励、公摊补偿房屋差额、成套房补贴、安家补贴、搬迁奖励、租房补贴。
 
 #### V. 关键衍生值计算
 
-*   **可对接购买补偿款 (`housingEligibleComp`)**: 用于判断购房资格。
-    *   原拆原迁: 计算逻辑在 `calculateHousingEligibleCompAndStructure` (`script.js`)。
-    *   异地安置: 计算逻辑在 `calculateHousingEligibleCompAndStructure_Remote` (`remoteCalculator.js`)。
-*   **等面积 (`equivalentArea`)** (仅原拆原迁): 用于确定 `resettlementArea`。
-*   **安置面积 (`resettlementArea`)** (仅原拆原迁): 根据 `equivalentArea` 上靠 `HOUSING_SIZES` (`roundUpToTier` in `script.js`)。
+*   **可对接购买补偿款 (`housingEligibleComp` - HEC)**: 用于判断购房资格。分别在 `script.js` 和 `remoteCalculator.js` 中计算。
+*   **等面积 (`equivalentArea`)**: 原拆原迁用于确定 `resettlementArea`。异地安置中 **临时用于** 判断是否符合上靠档位。
+*   **安置面积 (`resettlementArea`)**: 仅原拆原迁，根据 `equivalentArea` 上靠 `HOUSING_SIZES` (`roundUpToTier` in `script.js`)。
 
-#### VI. 方案生成逻辑 (`script.js` -> `calculateButton` listener)
+#### VI. 方案生成逻辑 (重要更新) (`script.js` -> `calculateButton` listener, `remoteCalculator.js`)
 
 *   **原拆原迁 (`calculateCompensation` in `script.js`):**
     *   计算 HEC 和 Equivalent Area。
     *   若 Eq Area < 30，不生成住房方案。
     *   生成 Max Housing, 1 House + Cash, 2 Houses + Cash 方案 (需满足 HEC >= 房款)。
-    *   **不包含** 纯货币方案。
 *   **纯货币 (`calculatePureCash` in `script.js`):**
     *   直接调用 `calculatePureCash` 计算并显示详情。
 *   **异地安置 (`calculateRemoteRelocationScenarios` in `remoteCalculator.js`):**
     *   计算 HEC。
-    *   遍历所选区域类型下的所有楼盘及其所有可用房型。
-    *   对 **每一个** 可用房型，检查 HEC 是否 >= `房型面积 * 对接价` (允许1元容差)。
-    *   若可负担，则调用 `calculateRemoteValueSplitScenario` 生成该房型方案。
+    *   遍历所选区域类型下的所有楼盘。
+    *   对每个楼盘，计算基于 HEC 和该楼盘对接价的 `equivalentAreaForProperty`。
+    *   使用 `roundUpToTier` 计算该楼盘对应的 `roundedUpTier`。
+    *   遍历该楼盘的所有可用房型 `size`：
+        *   计算 `houseCost = size * property.price`。
+        *   **生成条件:** 如果 (`houseCost <= HEC` 允许1元容差) **或者** (`size == roundedUpTier`)，则生成该 `size` 的方案。
+        *   调用 `calculateRemoteValueSplitScenario` 计算方案详情。
 
 #### VII. 房屋选择与组合规则 (原拆原迁 - `script.js`)
 
-*   使用 `HOUSING_SIZES` = `[45, 60, 75, 90, 105, 120, 135, 150]`。
+*   使用 `HOUSING_SIZES` = `[45, 60, 75, 90, 105, 120, 135, 150, 180]`。
 *   `findHousingCombinations`: 查找能精确组合成 `resettlementArea` 的单套或两套房型。
 
 #### VIII. "X房+货币"方案拆分规则 (原拆原迁 - `script.js`)
 
-*   **A地块:** `calculateXHousePlusCash_ValueSplit` - 按 `房款 / housingEligibleComp` 比例拆分各项补偿。
+*   **A地块:** `calculateXHousePlusCash_ValueSplit` - 按 `房款 / HEC` 比例拆分各项补偿。
 *   **B/C/D地块:** `calculateXHousePlusCash_AreaSplit` - 按 `目标房型面积 / 1.1` 计算房部分面积，剩余面积按货币计算。
 
-#### IX. 异地安置方案计算规则 (价值比例拆分 - `remoteCalculator.js`)
+#### IX. 异地安置方案计算规则 (价值比例拆分 - `remoteCalculator.js` - 重要更新)
 
 *   `calculateRemoteValueSplitScenario`: **始终采用价值比例拆分**。
-*   比例 (`propHouse`) = `min(选择的房型面积 * 楼盘对接价 / housingEligibleComp, 1)`。
-*   根据 `propHouse` 和 `propCash = 1 - propHouse` 拆分各项补偿到房部分和币部分。
-*   最终方案名称简化为 `XX㎡ + 货币` 或 `XX㎡`。
+*   比例 (`propHouse`) = `min(选择的房款 / HEC, 1)`。
+*   根据 `propHouse` 和 `propCash` 拆分各项补偿到房部分和币部分。
+*   **搬家费:** 根据区域类型 (`现房`=1次/`期房`=2次) 计算总额。若低于下限 (1000/2000)，则 **全部计入房部分** 并补足下限；否则，按 `propHouse`/`propCash` **比例拆分** 到两部分。
+*   **过渡费:** 根据区域类型 (`现房`=6月/`期房`=39月) 确定房部分计算月数 (`T1`)，币部分月数始终为6 (`T2`)。按 `总过渡费(T1) * propHouse` 计入房部分，按 `总过渡费(T2) * propCash` 计入币部分。
+*   **结构等级优惠:** **仅房部分按比例计算** (`总优惠 * propHouse`)。
+*   其他补偿项 (区位旧房、杂物间、公摊、成套房、安家) 均按 `propHouse`/`propCash` 比例拆分。
+*   货币奖励仅币部分计算；搬迁奖励、租房补贴仅币部分显示。
+*   公房扣减 **最后统一扣除**。
 
 #### X. 超过签约期比较计算 (`calculateLossScenario` in `script.js`)
 
@@ -190,9 +198,49 @@
 
 #### XI. 输出显示规则 (`script.js` -> display functions)
 
-*   **列表 (`displayScenariosList`):** 按安置方式组织，异地安置再按楼盘分组。
+*   **列表 (`displayScenariosList`):** 按安置方式组织，异地安置按楼盘名分组（楼盘名作为子标题，下方列出该楼盘的方案）。
 *   **详情 (`displayScenarioDetail`):** 显示核心数据，根据类型隐藏/显示"杂物间建议"按钮。
 *   **比较 (`displayComparison`, `displaySingleComparison`, `displayMultiComparison`):** 生成对比表格，处理签约期内外差异显示。
+
+#### XI. 逾期签约损失计算
+
+逾期签约损失包含以下项目：
+1. 结构等级优惠：确权面积 × 结构费率
+2. 公摊补偿房屋差额：公摊面积 × (区位价 + 房屋差额费率)
+3. 成套房补贴：确权面积 × 420
+4. 安家补贴：确权面积 × 50
+5. 搬迁奖励：根据确权面积分档（≥90㎡:30000, ≥60㎡:25000, <60㎡:20000）
+6. 租房补贴：固定20000元
+
+##### Excel计算公式
+
+对于批量计算逾期签约损失，可以使用以下Excel公式（假设A列为住宅面积，B列为杂物间面积）：
+
+```
+=LET(
+    confirmedArea, A2 + IF(B2="",0,B2)*0.5,
+    publicCompArea, MIN(confirmedArea*0.1, 10),
+    structureLoss, confirmedArea*570,
+    publicCompLoss, publicCompArea*(15942+1900),
+    completeAptLoss, confirmedArea*420,
+    settlingLoss, confirmedArea*50,
+    rewardLoss, IF(confirmedArea>=90, 30000, IF(confirmedArea>=60, 25000, 20000)),
+    rentalLoss, 20000,
+    structureLoss + publicCompLoss + completeAptLoss + settlingLoss + rewardLoss + rentalLoss
+)
+```
+
+公式说明：
+- `confirmedArea`: 确权面积 = 住宅面积 + 杂物间面积×0.5
+- `publicCompArea`: 公摊补偿面积 = MIN(确权面积×0.1, 10)
+- `structureLoss`: 结构等级优惠 = 确权面积×570（A地块）
+- `publicCompLoss`: 公摊补偿房屋差额 = 公摊面积×(15942+1900)
+- `completeAptLoss`: 成套房补贴 = 确权面积×420
+- `settlingLoss`: 安家补贴 = 确权面积×50
+- `rewardLoss`: 搬迁奖励（根据确权面积分档）
+- `rentalLoss`: 租房补贴 = 20000
+
+将公式复制到Excel单元格后，向下拖动即可批量计算。公式会自动处理杂物间为空的情况（默认为0）。
 
 ### 运行环境
 
@@ -205,10 +253,13 @@
 *   **计算逻辑:** 修改 `script.js` (原拆原迁/核心逻辑) 和 `remoteCalculator.js` (异地安置)。
 *   **密码:** 修改 `script.js` 文件开头的 `correctPassword` 变量。
 *   **新增地块/异地楼盘:** 更新 `blockRates.js` 或 `relocationOptions.js`。
-*   **建议:** 将共享的计算函数 (如 HEC 计算, 面积计算, 格式化函数) 提取到单独的 `utils.js` 文件中，以减少代码重复。
+*   **建议:** 将共享的计算函数 (如 HEC 计算, 格式化函数) 提取到单独的 `utils.js` 文件中，以减少代码重复 (`roundUpToTier` 已移出 `initializeApp` 并导出)。
 
 ### 术语解释
 
-*(原有术语解释基本适用)*
+*(基本同前)*
+*   **HEC (Housing Eligible Compensation):** 可对接购买安置型商品房的补偿款，用于判断购房资格。
+*   **等面积 (Equivalent Area):** HEC / 对接价，用于判断上靠档位。
+*   **现房/期房:** 影响异地安置的搬家费次数和过渡费（房部分）月份数。
 
 ---
